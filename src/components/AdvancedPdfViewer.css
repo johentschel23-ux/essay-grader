@@ -1,0 +1,94 @@
+.advanced-pdf-viewer-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Or a specific height like 80vh */
+  width: 100%;
+  overflow: hidden; /* Prevent container scrollbars if children manage their own */
+  background-color: #f0f0f0; /* Light background for the viewer area */
+}
+
+.evidence-navigation {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background-color: #e9ecef; /* A light grey background for the nav bar */
+  border-bottom: 1px solid #dee2e6; /* Separator line */
+  flex-shrink: 0; /* Prevent nav from shrinking */
+}
+
+.evidence-navigation button {
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  border: 1px solid #007bff;
+  background-color: #007bff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.evidence-navigation button:disabled {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.evidence-navigation button:not(:disabled):hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.evidence-navigation span {
+  font-size: 0.9rem;
+  color: #343a40; /* Darker text for readability */
+  margin: 0 10px;
+}
+
+.pdf-highlighter-wrapper {
+  flex-grow: 1; /* Allow wrapper to take up remaining space */
+  overflow-y: auto; /* Allow scrolling for the PDF content itself */
+  position: relative; /* Necessary for react-pdf-highlighter's internal absolute positioning */
+  background-color: #fff; /* White background for the PDF viewing area */
+}
+
+/* Default styling for react-pdf-highlighter often includes a border around the viewer component itself.
+   If you see a double border or unwanted default styles, you might need to override them.
+   For example, to remove a border from the main PdfHighlighter component's container if it adds one:
+*/
+.react-pdf__Page__canvas {
+  /* Ensure canvas doesn't cause layout shifts if its parent has padding */
+  display: block; 
+}
+
+/* Style for the Tip component when hovering over a highlight (if using manual highlighting features) */
+.tip-container {
+  background-color: white;
+  padding: 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  font-size: 0.9em;
+}
+
+/* Popups that show highlight comments */
+.PdfHighlighter__popup {
+    background-color: #333;
+    border: 1px solid #444;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    max-width: 300px; /* Prevent popup from becoming too wide */
+    word-wrap: break-word; /* Wrap long words in comments */
+}
+
+/* 
+Default styles for .Highlight and .Highlight--scrolledTo are provided by react-pdf-highlighter.
+If customization is needed, uncomment and add styles below, for example:
+.Highlight {
+    background: rgba(255, 255, 0, 0.3); 
+}
+.Highlight--scrolledTo {
+    background: rgba(255, 220, 0, 0.5); 
+}
+*/
