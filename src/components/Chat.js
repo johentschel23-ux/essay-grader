@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import './Chat.css';
 import { extractTextFromPdf } from '../utils/pdfUtils';
 import geminiService from '../services/geminiService';
-import AdvancedPdfViewer from './AdvancedPdfViewer';
+// import AdvancedPdfViewer from './AdvancedPdfViewer';
+import InteractiveGrading from './InteractiveGrading';
+import OverallAssessment from './OverallAssessment';
+import RubricModal from './RubricModal';
 
 const Chat = ({ pdfFile }) => {
   const [pdfContent, setPdfContent] = useState(null);
@@ -143,15 +146,13 @@ const Chat = ({ pdfFile }) => {
   // Function to move to the next criterion
   const moveToNextCriterion = async () => {
     const nextIndex = currentCriterionIndex + 1;
-    
     if (nextIndex < rubricCriteria.length) {
-      setCurrentCriterionIndex(nextIndex);
-      setShowEvidence(false);
-      
-      // Check if we need to grade this criterion
+      // If the assessment for the next criterion does not exist, grade it first
       if (!criteriaAssessments[nextIndex]) {
         await gradeCurrentCriterion(rubricCriteria, nextIndex);
       }
+      setCurrentCriterionIndex(nextIndex);
+      setShowEvidence(false);
     } else {
       // All criteria have been graded
       finishGrading();
@@ -197,264 +198,6 @@ const Chat = ({ pdfFile }) => {
     setGradingComplete(false);
     setShowEvidence(false);
     setActivePdfEvidence(null);
-  };
-  
-  // Function to render the interactive grading interface
-  const renderInteractiveGrading = () => {
-    // If we're still loading criteria
-    if (isProcessingRubric && rubricCriteria.length === 0) {
-      return (
-        <div className="loading-container">
-          <p>Analyzing rubric and preparing grading interface...</p>
-        </div>
-      );
-    }
-    
-    // If we've completed grading, show the overall assessment
-    if (gradingComplete) {
-      return renderOverallAssessment();
-    }
-    
-    // If we have criteria but no assessments yet
-    if (rubricCriteria.length > 0 && criteriaAssessments.length === 0) {
-      return (
-        <div className="loading-container">
-          <p>Analyzing essay based on rubric criteria...</p>
-        </div>
-      );
-    }
-    
-    // If we have assessments, show the current criterion
-    if (criteriaAssessments.length > 0 && currentCriterionIndex < criteriaAssessments.length) {
-      const currentAssessment = criteriaAssessments[currentCriterionIndex];
-      const criterionId = currentAssessment.id;
-      
-      return (
-        <div className="interactive-grading-container"> 
-          <div className="grading-controls-column">
-            <div className="grading-progress">
-              <span>Criterion {currentCriterionIndex + 1} of {rubricCriteria.length}</span>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{ width: `${((currentCriterionIndex + 1) / rubricCriteria.length) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            
-            <div className="criterion-card">
-              <h3>{currentAssessment.name}</h3>
-              
-              <div className="criterion-levels">
-                {currentAssessment.levels && currentAssessment.levels.map(level => (
-                  <div key={level.score} className="criterion-level">
-                    <span className="level-score">{level.score}</span>
-                    <span className="level-description">{level.description}</span>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="criterion-assessment">
-                <h4>Assessment</h4>
-                <p className="justification">{currentAssessment.justification}</p>
-                
-                {!showEvidence ? (
-                  <button 
-                    className="show-evidence-button"
-                    onClick={() => setShowEvidence(true)}
-                  >
-                    Show Evidence
-                  </button>
-                ) : (
-                  <div className="evidence-container">
-                    <h4>Evidence from Essay</h4>
-                    {currentAssessment.evidence && currentAssessment.evidence.map((item, index) => (
-                      <div key={index} className="evidence-item">
-                        <div className="evidence-location">
-                          <span className="evidence-page">Page {item.page || 'N/A'}</span>
-                        </div>
-                        <blockquote className="evidence-quote">"{item.highlight || 'No quote available'}"</blockquote>
-                        {item.context && <div className="evidence-context">Context: {item.context}</div>} {/* Optionally display context */}
-                        {item.keywords && item.keywords.length > 0 && (
-                          <div className="evidence-keywords">
-                            <small>Key terms: {item.keywords.join(', ')}</small>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    <button 
-                      className="hide-evidence-button"
-                      onClick={() => setShowEvidence(false)}
-                    >
-                      Hide Evidence
-                    </button>
-                  </div>
-                )}
-              </div>
-              
-              <div className="scoring-section">
-                <div className="teacher-scoring">
-                  <h4>Your Score</h4>
-                  <div className="score-input-container">
-                    <select 
-                      value={teacherScores[criterionId] || ''}
-                      onChange={(e) => handleTeacherScoreInput(criterionId, parseInt(e.target.value))}
-                      className="score-select"
-                    >
-                      <option value="">Select a score</option>
-                      {Array.from({ length: currentAssessment.scoreRange.max - currentAssessment.scoreRange.min + 1 }, 
-                        (_, i) => currentAssessment.scoreRange.min + i).map(score => (
-                        <option key={score} value={score}>{score}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                
-                <div className="ai-scoring">
-                  <h4>AI Score</h4>
-                  {showAIScores[criterionId] ? (
-                    <div className="ai-score-revealed">{currentAssessment.aiScore}</div>
-                  ) : (
-                    <button 
-                      className="reveal-score-button"
-                      onClick={() => revealAIScore(criterionId)}
-                      disabled={!teacherScores[criterionId]}
-                    >
-                      {!teacherScores[criterionId] ? 'Enter your score first' : 'Reveal AI Score'}
-                    </button>
-                  )}
-                </div>
-              </div>
-              
-              <div className="navigation-buttons">
-                <button 
-                  className="prev-button"
-                  onClick={moveToPreviousCriterion}
-                  disabled={currentCriterionIndex === 0}
-                >
-                  Previous
-                </button>
-                <button 
-                  className="next-button"
-                  onClick={moveToNextCriterion}
-                  disabled={!teacherScores[criterionId]}
-                >
-                  {currentCriterionIndex === rubricCriteria.length - 1 ? 'Finish Grading' : 'Next Criterion'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column: PDF Viewer */}
-          <div className="pdf-viewer-column">
-            {pdfFile && (
-              <AdvancedPdfViewer
-                url={pdfFile} // Pass the actual pdfFile object/blob/URL
-                evidence={activePdfEvidence} // Pass the evidence to highlight
-              />
-            )}
-            {!pdfFile && (
-              <div className="pdf-placeholder">
-                <p>Please upload a PDF to view it here.</p>
-                <p>Once an essay and rubric are processed, click "Show Evidence in PDF" on a criterion to see highlights.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    }
-    
-    // Fallback
-    return (
-      <div className="no-criteria-message">
-        <p>No rubric criteria found. Please check your rubric format and try again.</p>
-      </div>
-    );
-  };
-  
-  // Function to render the overall assessment
-  const renderOverallAssessment = () => {
-    if (!overallAssessment) {
-      return (
-        <div className="loading-container">
-          <p>Generating overall assessment...</p>
-        </div>
-      );
-    }
-    
-    return (
-      <div className="overall-assessment-container">
-        <h2>Grading Complete</h2>
-        
-        <div className="assessment-summary">
-          <div className="assessment-section strengths-section">
-            <h3>Strengths</h3>
-            <p>{overallAssessment.strengths}</p>
-          </div>
-          
-          <div className="assessment-section improvements-section">
-            <h3>Areas for Improvement</h3>
-            <p>{overallAssessment.improvements}</p>
-          </div>
-          
-          <div className="assessment-section grade-section">
-            <h3>Overall Grade</h3>
-            <div className="final-grade">{overallAssessment.overallGrade}</div>
-          </div>
-          
-          <div className="assessment-section advice-section">
-            <h3>Advice for Student</h3>
-            <p>{overallAssessment.advice}</p>
-          </div>
-        </div>
-        
-        <div className="criteria-summary">
-          <h3>Criteria Breakdown</h3>
-          <table className="criteria-table">
-            <thead>
-              <tr>
-                <th>Criterion</th>
-                <th>Your Score</th>
-                <th>AI Score</th>
-                <th>Final Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              {criteriaAssessments.map((assessment) => {
-                const criterionId = assessment.id;
-                const teacherScore = teacherScores[criterionId] || '-';
-                const aiScore = assessment.aiScore || '-';
-                const finalScore = teacherScore !== '-' ? teacherScore : aiScore;
-                
-                return (
-                  <tr key={criterionId}>
-                    <td>{assessment.name}</td>
-                    <td>{teacherScore}</td>
-                    <td>{aiScore}</td>
-                    <td className="final-score">{finalScore}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="assessment-actions">
-          <button 
-            className="restart-button"
-            onClick={restartGrading}
-          >
-            Grade Again
-          </button>
-          <button 
-            className="close-button"
-            onClick={() => setGradingComplete(false)}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    );
   };
 
   const handleShowEvidenceInViewer = (evidenceFromCriterion) => {
@@ -514,7 +257,35 @@ const Chat = ({ pdfFile }) => {
         <div className="rubric-main-content">
           {/* If we have criteria assessments, show the interactive grading interface */}
           {(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
-            renderInteractiveGrading()
+            <InteractiveGrading
+              isProcessingRubric={isProcessingRubric}
+              rubricCriteria={rubricCriteria}
+              gradingComplete={gradingComplete}
+              renderOverallAssessment={() => (
+                <OverallAssessment
+                  overallAssessment={overallAssessment}
+                  criteriaAssessments={criteriaAssessments}
+                  teacherScores={teacherScores}
+                  restartGrading={restartGrading}
+                  setGradingComplete={setGradingComplete}
+                />
+              )}
+              criteriaAssessments={criteriaAssessments}
+              setCriteriaAssessments={setCriteriaAssessments}
+              currentCriterionIndex={currentCriterionIndex}
+              showEvidence={showEvidence}
+              setShowEvidence={setShowEvidence}
+              teacherScores={teacherScores}
+              handleTeacherScoreInput={handleTeacherScoreInput}
+              showAIScores={showAIScores}
+              revealAIScore={revealAIScore}
+              moveToNextCriterion={moveToNextCriterion}
+              moveToPreviousCriterion={moveToPreviousCriterion}
+              finishGrading={finishGrading}
+              restartGrading={restartGrading}
+              pdfFile={pdfFile}
+              activePdfEvidence={activePdfEvidence}
+            />
           )}
           
           {/* If we don't have criteria assessments yet but have rubric content */}
@@ -560,69 +331,22 @@ const Chat = ({ pdfFile }) => {
 
         </div>
       </div>  
+      {/* Rubric Modal */}
       {showRubricModal && (
-        <div className="modal-overlay">
-          <div className="rubric-modal">
-            <div className="rubric-modal-header">
-              <h3>Add Grading Rubric</h3>
-              <button 
-                className="close-modal-button" 
-                onClick={() => setShowRubricModal(false)}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div className="rubric-modal-content">
-              <p>Paste your grading rubric below. The AI will use this to evaluate the essay.</p>
-              <p className="rubric-example-toggle" onClick={() => {
-                const exampleRubric = `Criteria | Excellent (5) | Good (4) | Satisfactory (3) | Needs Improvement (2) | Poor (1)
-1. Depth of Reflection on Design Choices | Provides insightful and detailed reflection on specific design decisions; clearly explains rationale and implications. | Reflects on key design decisions with some insight; rationale is mostly clear. | Discusses design decisions but with limited depth or explanation. | Mentions design choices with little or no explanation of rationale. | Little to no reflection on design decisions.
-2. Engagement with Week 1 Insights | Thoughtfully revisits week 1 ideas; clearly connects initial thoughts with how the proposal evolved. | Addresses week 1 reflections and links them to the proposal, with minor gaps. | Refers to week 1 ideas but connections are vague or underdeveloped. | Minimal or unclear reference to week 1 reflections. | No reference to week 1 reflections.
-3. Application of Hoffman & Zhao's Guidance | Demonstrates a strong understanding of Hoffman & Zhao's advice and critically evaluates the proposal in light of it. | Applies Hoffman & Zhao's framework with moderate critical evaluation. | Mentions Hoffman & Zhao's advice but applies it superficially. | Minimal engagement with Hoffman & Zhao; weak application. | No mention or application of Hoffman & Zhao's work.
-4. Integration with Broader HRI Context | Effectively situates the proposal within the broader HRI field; shows awareness of relevance and implications. | Provides a clear link between the proposal and the HRI field. | Makes general statements about the proposal's relevance to HRI. | Vague or minimal connection to broader HRI context. | No mention of the broader HRI field.
-5. Clarity and Structure | Writing is clear, well-organized, and free from errors; arguments flow logically. | Generally clear and well-structured, with minor issues in flow or clarity. | Understandable but may lack coherence or have several writing issues. | Disorganized or unclear writing that hinders understanding. | Poorly written with little structure or clarity.`;
-                setRubricContent(exampleRubric);
-              }}>Click here to see an example rubric</p>
-              <textarea 
-                className="rubric-textarea"
-                value={rubricContent}
-                onChange={(e) => setRubricContent(e.target.value)}
-                placeholder="Paste your rubric here..."
-                rows={10}
-              />
-              <div className="rubric-modal-actions">
-                <button 
-                  className="cancel-button"
-                  onClick={() => setShowRubricModal(false)}
-                >
-                  Cancel
-                </button>
-                <button 
-                  className="save-button"
-                  onClick={() => {
-                    if (rubricContent.trim() !== '') {
-                      setShowRubricModal(false);
-                      // Save the rubric content
-                      // Reset any previous grading session
-                      setRubricCriteria([]);
-                      setCriteriaAssessments([]);
-                      setTeacherScores({});
-                      setShowAIScores({});
-                      setGradingComplete(false);
-                      setOverallAssessment(null);
-                    } else {
-                      alert('Please enter a rubric before saving.');
-                    }
-                  }}
-                >
-                  Save Rubric
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RubricModal
+          rubricContent={rubricContent}
+          setRubricContent={setRubricContent}
+          setShowRubricModal={setShowRubricModal}
+          setRubricCriteria={setRubricCriteria}
+          setCriteriaAssessments={setCriteriaAssessments}
+          setTeacherScores={setTeacherScores}
+          setShowAIScores={setShowAIScores}
+          setGradingComplete={setGradingComplete}
+          setOverallAssessment={setOverallAssessment}
+        />
       )}
+      
+
     </div>
   );
 };
