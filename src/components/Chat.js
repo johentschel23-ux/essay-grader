@@ -28,6 +28,47 @@ const Chat = ({ pdfFile }) => {
   const [overallAssessment, setOverallAssessment] = useState(null);
   const [activePdfEvidence, setActivePdfEvidence] = useState(null);
 
+  // Automatically generate overall assessment when all criteria are graded
+  useEffect(() => {
+    const shouldGenerate =
+      rubricCriteria.length > 0 &&
+      criteriaAssessments.length === rubricCriteria.length &&
+      !overallAssessment;
+    if (shouldGenerate) {
+      (async () => {
+        try {
+          // Prepare criteria with scores for the overall assessment
+          const criteriaWithScores = criteriaAssessments.map((assessment, index) => {
+            const criterionId = assessment.id;
+            return {
+              ...assessment,
+              teacherScore: teacherScores[criterionId] || null
+            };
+          });
+          setIsProcessingRubric(true);
+          const assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores);
+          setOverallAssessment(assessment);
+        } catch (error) {
+          console.error('Error generating overall assessment:', error);
+        } finally {
+          setIsProcessingRubric(false);
+        }
+      })();
+    }
+  }, [criteriaAssessments, rubricCriteria, overallAssessment, teacherScores, pdfContent]);
+
+  // Move to final screen when overallAssessment is set and all criteria are graded
+  useEffect(() => {
+    if (
+      rubricCriteria.length > 0 &&
+      criteriaAssessments.length === rubricCriteria.length &&
+      overallAssessment &&
+      !gradingComplete
+    ) {
+      setGradingComplete(true);
+    }
+  }, [rubricCriteria, criteriaAssessments, overallAssessment, gradingComplete]);
+
   // Extract text from PDF when it changes
   useEffect(() => {
     const extractPdfText = async () => {
@@ -74,20 +115,20 @@ const Chat = ({ pdfFile }) => {
     }
     
     setIsProcessingRubric(true);
-    
+    // Show spinner immediately by putting InteractiveGrading in loading state
+    setRubricCriteria([{ loading: true }]);
+    setCriteriaAssessments([]);
+    setCurrentCriterionIndex(0);
+    setTeacherScores({});
+    setShowAIScores({});
+    setGradingComplete(false);
+    setOverallAssessment(null);
+
     try {
       // Extract criteria from the rubric
       const criteria = await geminiService.extractRubricCriteria(rubricContent);
       setRubricCriteria(criteria);
-      
-      // Reset state for a new grading session
-      setCurrentCriterionIndex(0);
-      setCriteriaAssessments([]);
-      setTeacherScores({});
-      setShowAIScores({});
-      setGradingComplete(false);
-      setOverallAssessment(null);
-      
+
       // Start grading the first criterion
       if (criteria.length > 0) {
         await gradeCurrentCriterion(criteria, 0);
@@ -285,6 +326,7 @@ const Chat = ({ pdfFile }) => {
               restartGrading={restartGrading}
               pdfFile={pdfFile}
               activePdfEvidence={activePdfEvidence}
+              essayContent={pdfContent}
             />
           )}
           

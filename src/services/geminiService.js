@@ -492,7 +492,7 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
     Provide the following in your response:
     1. A summary of the essay's strengths
     2. A summary of areas for improvement
-    3. An overall grade or score
+    3. An overall grade or score, for this use a 0 to 10 points scale. You may use decimals e.g 7.4
     4. Brief advice for the student
     
     FORMAT YOUR RESPONSE AS A VALID JSON object:
@@ -546,6 +546,82 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
   }
 };
 
+/**
+ * Revise the AI's score for a criterion based on edited justification text.
+ * @param {string} essayContent - The content of the essay
+ * @param {object} criterion - The criterion object
+ * @param {string} originalJustification - The original justification from the LLM
+ * @param {string} editedJustification - The edited justification provided by the user
+ * @param {number} originalScore - The original AI-generated score
+ * @param {object} options - Optional configuration overrides
+ * @returns {Promise<object>} - { revisedScore: number, rationale: string }
+ */
+export const reviseCriterionScoreWithJustification = async (
+  essayContent,
+  criterion,
+  originalJustification,
+  editedJustification,
+  originalScore,
+  options = {}
+) => {
+  const prompt = `
+    You are an expert essay grader. The following is an essay, a rubric criterion, and two versions of the justification for the assessment of this criterion: the original justification (from an AI) and an edited justification (from a human reviewer). The original numerical score was ${originalScore}.
+
+    Please carefully consider the edited justification. If the edits suggest a different score is warranted, revise the score accordingly. Otherwise, keep the original score. Provide a brief rationale for your decision.
+
+    ESSAY:
+    ${essayContent}
+
+    CRITERION: ${criterion.name}
+    SCORE RANGE: ${criterion.scoreRange.min} to ${criterion.scoreRange.max}
+
+    ORIGINAL JUSTIFICATION:
+    ${originalJustification}
+
+    EDITED JUSTIFICATION:
+    ${editedJustification}
+
+    ORIGINAL SCORE: ${originalScore}
+
+    FORMAT YOUR RESPONSE AS A VALID JSON object:
+    {
+      "revisedScore": number, // the new score (or the original if unchanged)
+      "rationale": "A brief explanation for your decision"
+    }
+
+    DO NOT include any explanatory text before or after the JSON object.
+    ONLY return the JSON object and nothing else.
+  `;
+
+  const mergedOptions = {
+    ...options,
+    generationConfig: {
+      ...(options.generationConfig || {}),
+      temperature: 0.2,
+      maxOutputTokens: 512
+    }
+  };
+
+  try {
+    const response = await getGeminiResponse(prompt, mergedOptions);
+    let cleanedResponse = response.trim();
+    cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
+    cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
+    const firstBrace = cleanedResponse.indexOf('{');
+    const lastBrace = cleanedResponse.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
+    }
+    return JSON.parse(cleanedResponse);
+  } catch (error) {
+    console.error('Error revising criterion score:', error);
+    return {
+      revisedScore: originalScore,
+      rationale: 'There was an error revising the score. The original score is retained.'
+    };
+  }
+};
+
 // Create a named export object
 const geminiService = {
   getGeminiResponse,
@@ -558,7 +634,8 @@ const geminiService = {
   generateProofPoints,
   extractRubricCriteria,
   gradeSingleCriterion,
-  generateOverallAssessment
+  generateOverallAssessment,
+  reviseCriterionScoreWithJustification
 };
 
 export default geminiService;
