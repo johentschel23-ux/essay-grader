@@ -24,8 +24,24 @@ const InteractiveGrading = ({
   restartGrading,
   pdfFile,
   activePdfEvidence,
-  essayContent // <-- add essayContent as a prop
+  essayContent, // <-- add essayContent as a prop
+  gradeCurrentCriterion, // <-- make sure this is passed as a prop
+  setGradingComplete // <-- add this prop
 }) => {
+  // --- Handler to ensure last criterion is graded before finishing ---
+  const handleFinishGrading = async () => {
+    const lastIndex = rubricCriteria.length - 1;
+    if (!criteriaAssessments[lastIndex]) {
+      await gradeCurrentCriterion(rubricCriteria, lastIndex);
+    }
+    await finishGrading();
+    // Now that all grading and assessment is done, mark grading as complete
+    if (typeof setGradingComplete === 'function') {
+      setGradingComplete(true);
+    }
+  };
+
+
   const [editingJustification, setEditingJustification] = React.useState(false);
   const [editedJustification, setEditedJustification] = React.useState('');
 
@@ -119,7 +135,7 @@ const handleSaveJustification = async () => {
     );
   }
 
-  // If we've completed grading, show the overall assessment
+  // Only show the final screen if gradingComplete is true
   if (gradingComplete) {
     return renderOverallAssessment();
   }
@@ -139,27 +155,10 @@ const handleSaveJustification = async () => {
     );
   }
 
-  // Show loading visual when waiting for final grading screen (overall assessment generation)
-  if (
-    rubricCriteria.length > 0 &&
-    criteriaAssessments.length === rubricCriteria.length &&
-    !overallAssessment
-  ) {
-    return (
-      <div className="initial-assessment-loading">
-        <div className="spinner" aria-label="Loading overall assessment...">
-          <svg width="48" height="48" viewBox="0 0 48 48">
-            <circle className="spinner-bg" cx="24" cy="24" r="20" fill="none" stroke="#e0e0e0" strokeWidth="5"/>
-            <circle className="spinner-fg" cx="24" cy="24" r="20" fill="none" stroke="#4cb5f5" strokeWidth="5" strokeLinecap="round" strokeDasharray="100, 40"/>
-          </svg>
-        </div>
-        <div className="loading-message">Generating final overall assessment...</div>
-      </div>
-    );
-  }
 
-  // If we have assessments, show the current criterion
-  if (criteriaAssessments.length > 0 && currentCriterionIndex < criteriaAssessments.length) {
+
+  // Always show the current criterion (even for the last one) until gradingComplete is true
+  if (rubricCriteria.length > 0 && criteriaAssessments.length > 0 && !gradingComplete) {
     const currentAssessment = criteriaAssessments[currentCriterionIndex];
     const criterionId = currentAssessment.id;
 
@@ -328,12 +327,21 @@ const handleSaveJustification = async () => {
           >
             Previous
           </button>
-          <button 
-            className="next-button"
-            onClick={moveToNextCriterion}
-          >
-            Next
-          </button>
+          {currentCriterionIndex < rubricCriteria.length - 1 ? (
+            <button 
+              className="next-button"
+              onClick={moveToNextCriterion}
+            >
+              Next
+            </button>
+          ) : (
+            <button
+              className="finish-button"
+              onClick={handleFinishGrading}
+            >
+              Finish
+            </button>
+          )}
         </div>
       </div>
       {/* Right Column: PDF Viewer */}
@@ -359,3 +367,4 @@ const handleSaveJustification = async () => {
 };
 
 export default InteractiveGrading;
+

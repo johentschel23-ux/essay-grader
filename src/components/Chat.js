@@ -28,46 +28,6 @@ const Chat = ({ pdfFile }) => {
   const [overallAssessment, setOverallAssessment] = useState(null);
   const [activePdfEvidence, setActivePdfEvidence] = useState(null);
 
-  // Automatically generate overall assessment when all criteria are graded
-  useEffect(() => {
-    const shouldGenerate =
-      rubricCriteria.length > 0 &&
-      criteriaAssessments.length === rubricCriteria.length &&
-      !overallAssessment;
-    if (shouldGenerate) {
-      (async () => {
-        try {
-          // Prepare criteria with scores for the overall assessment
-          const criteriaWithScores = criteriaAssessments.map((assessment, index) => {
-            const criterionId = assessment.id;
-            return {
-              ...assessment,
-              teacherScore: teacherScores[criterionId] || null
-            };
-          });
-          setIsProcessingRubric(true);
-          const assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores);
-          setOverallAssessment(assessment);
-        } catch (error) {
-          console.error('Error generating overall assessment:', error);
-        } finally {
-          setIsProcessingRubric(false);
-        }
-      })();
-    }
-  }, [criteriaAssessments, rubricCriteria, overallAssessment, teacherScores, pdfContent]);
-
-  // Move to final screen when overallAssessment is set and all criteria are graded
-  useEffect(() => {
-    if (
-      rubricCriteria.length > 0 &&
-      criteriaAssessments.length === rubricCriteria.length &&
-      overallAssessment &&
-      !gradingComplete
-    ) {
-      setGradingComplete(true);
-    }
-  }, [rubricCriteria, criteriaAssessments, overallAssessment, gradingComplete]);
 
   // Extract text from PDF when it changes
   useEffect(() => {
@@ -194,11 +154,10 @@ const Chat = ({ pdfFile }) => {
       }
       setCurrentCriterionIndex(nextIndex);
       setShowEvidence(false);
-    } else {
-      // All criteria have been graded
-      finishGrading();
     }
+    // Do not call finishGrading here; the UI will handle calling finishGrading when on the last criterion.
   };
+
   
   // Function to move to the previous criterion
   const moveToPreviousCriterion = () => {
@@ -211,7 +170,6 @@ const Chat = ({ pdfFile }) => {
   // Function to finish the grading process
   const finishGrading = async () => {
     setIsProcessingRubric(true);
-    setGradingComplete(true);
     
     try {
       // Prepare criteria with scores for the overall assessment
@@ -232,26 +190,17 @@ const Chat = ({ pdfFile }) => {
       setIsProcessingRubric(false);
     }
   };
-  
-  // Function to restart the grading process
-  const restartGrading = () => {
-    setCurrentCriterionIndex(0);
-    setGradingComplete(false);
-    setShowEvidence(false);
-    setActivePdfEvidence(null);
-  };
 
-  const handleShowEvidenceInViewer = (evidenceFromCriterion) => {
-    if (evidenceFromCriterion) {
-      // Ensure it's an array for AdvancedPdfViewer
-      const evidenceArray = Array.isArray(evidenceFromCriterion) ? evidenceFromCriterion : [evidenceFromCriterion];
-      // Transform to expected IHighlight structure if necessary
+  // End of finishGrading
+
+
+  // Function to show evidence highlights in the PDF viewer
+  const handleShowEvidenceInViewer = (evidenceArray) => {
+    if (evidenceArray && evidenceArray.length > 0) {
       const transformedEvidence = evidenceArray.map(ev => ({
         id: ev.id || String(Math.random()), // Ensure an ID
         position: { 
             pageNumber: ev.pageNumber || ev.page, // Handle variations in prop name
-            // We expect react-pdf-highlighter's searchHighlights to find the rects
-            // If you have rects already, they would go here:
             // boundingRect: { x1, y1, x2, y2, width, height }
         },
         content: { text: ev.highlight }, // Text to search for
@@ -263,6 +212,21 @@ const Chat = ({ pdfFile }) => {
       setActivePdfEvidence(null);
     }
   };
+
+  // Function to restart the grading process
+  const restartGrading = () => {
+    setRubricCriteria([]);
+    setCriteriaAssessments([]);
+    setCurrentCriterionIndex(0);
+    setTeacherScores({});
+    setShowAIScores({});
+    setGradingComplete(false);
+    setOverallAssessment(null);
+    setShowEvidence(false);
+    setActivePdfEvidence(null);
+    setRubricContent(''); // Optionally clear rubric text as well
+  };
+
 
   const handleClearEvidenceInViewer = () => {
     console.log("Chat.js: Clearing active PDF evidence.");
@@ -311,6 +275,7 @@ const Chat = ({ pdfFile }) => {
                   setGradingComplete={setGradingComplete}
                 />
               )}
+              overallAssessment={overallAssessment}
               criteriaAssessments={criteriaAssessments}
               setCriteriaAssessments={setCriteriaAssessments}
               currentCriterionIndex={currentCriterionIndex}
@@ -327,9 +292,10 @@ const Chat = ({ pdfFile }) => {
               pdfFile={pdfFile}
               activePdfEvidence={activePdfEvidence}
               essayContent={pdfContent}
+              gradeCurrentCriterion={gradeCurrentCriterion}
+              setGradingComplete={setGradingComplete}
             />
           )}
-          
           {/* If we don't have criteria assessments yet but have rubric content */}
           {!criteriaAssessments.length && !isProcessingRubric && rubricContent && (
             <div className="rubric-preview-main">

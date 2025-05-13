@@ -480,31 +480,24 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
   ).join('\n');
   
   const prompt = `
-    You are an expert essay grader. Based on the following criterion scores, provide an overall assessment
-    and final grade for the essay.
+    You are an expert essay grader. Given the following essay and the scores for each criterion, provide an overall assessment. 
+    Summarize the essay's strengths and areas for improvement. 
+    Then, generate a final grade on a 0-10 scale (with decimals allowed), where the individual criterion scores are on their own scales (typically 1-5). 
+    The final grade should reflect the average performance across all criteria, converted to a 10-point scale.
     
-    CRITERIA SCORES:
+    ESSAY:
+    ${essayContent}
+    
+    CRITERIA & SCORES:
     ${criteriaText}
     
-    ESSAY EXCERPT (first 1000 chars):
-    ${essayContent.substring(0, 1000)}...
-    
-    Provide the following in your response:
-    1. A summary of the essay's strengths
-    2. A summary of areas for improvement
-    3. An overall grade or score, for this use a 0 to 10 points scale. You may use decimals e.g 7.4
-    4. Brief advice for the student
-    
-    FORMAT YOUR RESPONSE AS A VALID JSON object:
+    FORMAT YOUR RESPONSE AS A VALID JSON OBJECT with the following keys:
     {
-      "strengths": "Summary of strengths",
-      "improvements": "Areas for improvement",
-      "overallGrade": "The final grade",
-      "advice": "Brief advice for the student"
+      "strengths": string,
+      "improvements": string,
+      "overallGrade": number, // final grade on a 0-10 scale (decimals allowed)
+      "advice": string
     }
-    
-    DO NOT include any explanatory text before or after the JSON object.
-    ONLY return the JSON object and nothing else.
   `;
   
   const mergedOptions = {
@@ -519,22 +512,44 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
   try {
     const response = await getGeminiResponse(prompt, mergedOptions);
     
-    // Clean up the response to ensure it's valid JSON
-    let cleanedResponse = response.trim();
-    
-    // Remove any markdown code block markers
-    cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
-    cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
-    
-    // Remove any text before the first { and after the last }
-    const firstBrace = cleanedResponse.indexOf('{');
-    const lastBrace = cleanedResponse.lastIndexOf('}');
-    
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
+    try {
+      let cleanedResponse = response.trim();
+      // Remove markdown code block markers if present
+      cleanedResponse = cleanedResponse.replace(/^```json|^```js|^```javascript|^```/gi, '');
+      cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
+      const firstBrace = cleanedResponse.indexOf('{');
+      const lastBrace = cleanedResponse.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
+      }
+      let assessment = JSON.parse(cleanedResponse);
+
+      // --- Enforce local final grade calculation on a 10-point scale ---
+      // Use teacherScore if available, otherwise aiScore
+      const scores = criteriaWithScores.map(c => {
+        let score = c.teacherScore != null ? Number(c.teacherScore) : Number(c.aiScore);
+        let max = c.scoreRange && c.scoreRange.max ? Number(c.scoreRange.max) : 5;
+        // Default to 5 if not specified
+        return {score, max};
+      }).filter(s => !isNaN(s.score) && !isNaN(s.max) && s.max > 0);
+      if (scores.length > 0) {
+        const avgRatio = scores.reduce((sum, s) => sum + (s.score / s.max), 0) / scores.length;
+        const finalGrade10 = Math.round(avgRatio * 10 * 100) / 100; // round to 2 decimals
+        assessment.overallGrade = finalGrade10;
+      } else {
+        assessment.overallGrade = "N/A";
+      }
+      return assessment;
+    } catch (error) {
+      console.error('Error generating overall assessment:', error);
+      return {
+        strengths: "There was an error generating the overall assessment.",
+        improvements: "Please review the individual criteria scores.",
+        overallGrade: "N/A",
+        advice: "Consider reviewing each criterion individually."
+      };
     }
-    
-    return JSON.parse(cleanedResponse);
   } catch (error) {
     console.error('Error generating overall assessment:', error);
     return {
