@@ -298,20 +298,30 @@ const InteractiveGrading = ({
               ) : (
                 <div className="evidence-container">
                   <h4>Evidence from Essay</h4>
-                  {currentAssessment.evidence && currentAssessment.evidence.map((item, index) => (
-                    <div key={index} className="evidence-item">
-                      <div className="evidence-location">
-                        <span className="evidence-page">Page {item.page || 'N/A'}</span>
-                      </div>
-                      <blockquote className="evidence-quote">"{item.highlight || 'No quote available'}"</blockquote>
-                      {item.context && <div className="evidence-context">Context: {item.context}</div>}
-                      {item.keywords && item.keywords.length > 0 && (
-                        <div className="evidence-keywords">
-                          <small>Key terms: {item.keywords.join(', ')}</small>
+                  {Array.isArray(currentAssessment.evidence) && currentAssessment.evidence.length > 0 ? (
+                    currentAssessment.evidence.map((item, index) => {
+                      // Support both 'highlight' and 'quote' keys for evidence
+                      const quote = item.highlight || item.quote || 'No quote available';
+                      return (
+                        <div key={index} className="evidence-item">
+                          <div className="evidence-location">
+                            <span className="evidence-page">Page {item.page || item.paragraph || 'N/A'}</span>
+                          </div>
+                          <blockquote className="evidence-quote">"{quote}"</blockquote>
+                          {item.context && <div className="evidence-context">Context: {item.context}</div>}
+                          {item.keywords && item.keywords.length > 0 && (
+                            <div className="evidence-keywords">
+                              <small>Key terms: {item.keywords.join(', ')}</small>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      );
+                    })
+                  ) : (
+                    <div className="evidence-not-found-warning">
+                      <p>No evidence quotes available for this criterion.</p>
                     </div>
-                  ))}
+                  )}
                   <button 
                     className="hide-evidence-button"
                     onClick={() => setShowEvidence(false)}
