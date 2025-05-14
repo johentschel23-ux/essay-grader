@@ -68,108 +68,6 @@ export const getGeminiResponse = async (prompt, options = {}) => {
 };
 
 /**
- * Generate an essay summary
- * @param {string} essayContent - The content of the essay
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<string>} - The generated summary
- */
-export const generateEssaySummary = async (essayContent, options = {}) => {
-  const prompt = `
-    Summarize the following essay in a concise manner. Focus on the main thesis, 
-    key arguments, and conclusions:
-    
-    ${essayContent}
-  `;
-  
-  return getGeminiResponse(prompt, options);
-};
-
-/**
- * Generate an essay grade with explanation
- * @param {string} essayContent - The content of the essay
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<string>} - The generated grade with explanation
- */
-export const generateEssayGrade = async (essayContent, options = {}) => {
-  const prompt = `
-    Grade the following essay on a scale from A+ to F. Provide a brief explanation
-    for the grade, highlighting strengths and areas for improvement:
-    
-    ${essayContent}
-  `;
-  
-  return getGeminiResponse(prompt, options);
-};
-
-/**
- * Generate detailed feedback for an essay
- * @param {string} essayContent - The content of the essay
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<string>} - The generated detailed feedback
- */
-export const generateEssayFeedback = async (essayContent, options = {}) => {
-  const prompt = `
-    Provide detailed feedback for the following essay. Include analysis of structure,
-    argument quality, evidence usage, and writing style:
-    
-    ${essayContent}
-  `;
-  
-  return getGeminiResponse(prompt, options);
-};
-
-/**
- * Identify the strengths of an essay
- * @param {string} essayContent - The content of the essay
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<string>} - The identified strengths
- */
-export const identifyEssayStrengths = async (essayContent, options = {}) => {
-  const prompt = `
-    Identify and list the main strengths of the following essay. Focus on aspects
-    such as argument quality, structure, evidence, and writing style:
-    
-    ${essayContent}
-  `;
-  
-  return getGeminiResponse(prompt, options);
-};
-
-/**
- * Identify areas for improvement in an essay
- * @param {string} essayContent - The content of the essay
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<string>} - The identified areas for improvement
- */
-export const identifyEssayImprovements = async (essayContent, options = {}) => {
-  const prompt = `
-    Identify and list the main areas for improvement in the following essay. Focus on
-    aspects such as argument quality, structure, evidence, and writing style:
-    
-    ${essayContent}
-  `;
-  
-  return getGeminiResponse(prompt, options);
-};
-
-/**
- * Analyze the clarity and structure of an essay
- * @param {string} essayContent - The content of the essay
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<string>} - The clarity and structure analysis
- */
-export const analyzeEssayClarityStructure = async (essayContent, options = {}) => {
-  const prompt = `
-    Analyze the clarity and structure of the following essay. Evaluate paragraph
-    organization, transitions, focus, and overall coherence:
-    
-    ${essayContent}
-  `;
-  
-  return getGeminiResponse(prompt, options);
-};
-
-/**
  * Generate proof points from an essay to support analysis
  * @param {string} essayContent - The content of the essay
  * @param {string} claim - The claim to find evidence for
@@ -401,6 +299,29 @@ export const extractRubricCriteria = async (rubricContent) => {
  * @returns {Promise<object>} - The assessment for this criterion
  */
 export const gradeSingleCriterion = async (essayContent, criterion, options = {}) => {
+  // Settings for assessment format and length
+  const assessmentType = options.assessmentType || 'flow';
+  const assessmentLength = options.assessmentLength || 'long';
+
+  let justificationInstruction = '';
+  let justificationSchema = '';
+  if (assessmentType === 'bullets') {
+    justificationInstruction = 'Present your justification as bullet points. Return the justification as a JSON array of strings, where each string is a bullet point.';
+    justificationSchema = '"justification": ["bullet point 1", "bullet point 2", ...],';
+  } else {
+    justificationInstruction = 'Present your justification as a coherent paragraph. Return the justification as a single string.';
+    justificationSchema = '"justification": "Your detailed justification without revealing the exact score",';
+  }
+
+  let lengthInstruction = '';
+  if (assessmentLength === 'short') {
+    lengthInstruction = 'Be concise and brief.';
+  } else if (assessmentLength === 'medium') {
+    lengthInstruction = 'Be balanced in detail and length.';
+  } else {
+    lengthInstruction = 'Be detailed and extended.';
+  }
+
   const prompt = `
     You are an expert essay grader. Grade the following essay based on a single criterion from a rubric.
     
@@ -411,13 +332,13 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
     ${essayContent}
     
     Provide the following in your response:
-    1. A detailed justification for your assessment (without revealing the exact score)
+    1. A justification for your assessment (without revealing the exact score). ${justificationInstruction} ${lengthInstruction}
     2. At least 3 specific quotes from the essay that support your assessment
     3. Your numerical score (${criterion.scoreRange.min}-${criterion.scoreRange.max})
     
     FORMAT YOUR RESPONSE AS A VALID JSON object:
     {
-      "justification": "Your detailed justification without revealing the exact score",
+      ${justificationSchema}
       "evidence": [
         { "quote": "exact quote from essay", "paragraph": "paragraph number or location" },
         ...
@@ -475,6 +396,29 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
  * @returns {Promise<object>} - The overall assessment
  */
 export const generateOverallAssessment = async (essayContent, criteriaWithScores, options = {}) => {
+  // Settings for assessment format and length
+  const assessmentType = options.assessmentType || 'flow';
+  const assessmentLength = options.assessmentLength || 'long';
+
+  let strengthsInstruction = '';
+  let improvementsInstruction = '';
+  if (assessmentType === 'bullets') {
+    strengthsInstruction = 'Present strengths as bullet points.';
+    improvementsInstruction = 'Present areas for improvement as bullet points.';
+  } else {
+    strengthsInstruction = 'Present strengths as a coherent paragraph.';
+    improvementsInstruction = 'Present areas for improvement as a coherent paragraph.';
+  }
+
+  let lengthInstruction = '';
+  if (assessmentLength === 'short') {
+    lengthInstruction = 'Be concise and brief.';
+  } else if (assessmentLength === 'medium') {
+    lengthInstruction = 'Be balanced in detail and length.';
+  } else {
+    lengthInstruction = 'Be detailed and extended.';
+  }
+
   const criteriaText = criteriaWithScores.map(c => 
     `${c.name}: Score ${c.teacherScore || c.aiScore} out of ${c.scoreRange.max}`
   ).join('\n');
@@ -484,6 +428,8 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
     Summarize the essay's strengths and areas for improvement. 
     Then, generate a final grade on a 0-10 scale (with decimals allowed), where the individual criterion scores are on their own scales (typically 1-5). 
     The final grade should reflect the average performance across all criteria, converted to a 10-point scale.
+
+    ${strengthsInstruction} ${improvementsInstruction} ${lengthInstruction}
     
     ESSAY:
     ${essayContent}
@@ -640,12 +586,6 @@ export const reviseCriterionScoreWithJustification = async (
 // Create a named export object
 const geminiService = {
   getGeminiResponse,
-  generateEssaySummary,
-  generateEssayGrade,
-  generateEssayFeedback,
-  identifyEssayStrengths,
-  identifyEssayImprovements,
-  analyzeEssayClarityStructure,
   generateProofPoints,
   extractRubricCriteria,
   gradeSingleCriterion,

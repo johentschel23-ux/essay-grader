@@ -26,7 +26,8 @@ const InteractiveGrading = ({
   activePdfEvidence,
   essayContent, // <-- add essayContent as a prop
   gradeCurrentCriterion, // <-- make sure this is passed as a prop
-  setGradingComplete // <-- add this prop
+  setGradingComplete, // <-- add this prop
+  assessmentType // <-- NEW: pass assessmentType as a prop
 }) => {
   // --- Handler to ensure last criterion is graded before finishing ---
   const handleFinishGrading = async () => {
@@ -44,23 +45,36 @@ const InteractiveGrading = ({
 
   const [editingJustification, setEditingJustification] = React.useState(false);
   const [editedJustification, setEditedJustification] = React.useState('');
+  const [editedBullets, setEditedBullets] = React.useState([]);
 
   React.useEffect(() => {
     if (criteriaAssessments.length > 0 && currentCriterionIndex < criteriaAssessments.length) {
-      setEditedJustification(criteriaAssessments[currentCriterionIndex].justification || '');
+      const justification = criteriaAssessments[currentCriterionIndex].justification || '';
+      if (assessmentType === 'bullets' && Array.isArray(justification)) {
+        setEditedBullets(justification);
+        setEditedJustification('');
+      } else {
+        setEditedJustification(justification);
+        setEditedBullets([]);
+      }
       setEditingJustification(false);
     }
-  }, [currentCriterionIndex, criteriaAssessments]);
+  }, [currentCriterionIndex, criteriaAssessments, assessmentType]);
 
   const [isRevisingScore, setIsRevisingScore] = React.useState(false);
-const [revisionRationale, setRevisionRationale] = React.useState('');
+  const [revisionRationale, setRevisionRationale] = React.useState('');
 
-const handleSaveJustification = async () => {
+  const handleSaveJustification = async () => {
   const now = () => new Date().toISOString();
   const currentAssessment = criteriaAssessments[currentCriterionIndex];
-  console.log(`[${now()}] [handleSaveJustification] currentAssessment:`, currentAssessment);
-  const wasEdited = editedJustification.trim() !== (currentAssessment.justification || '').trim();
-  let updatedAssessment = { ...currentAssessment, justification: editedJustification, essayContent: essayContent };
+  let newJustification;
+  if (assessmentType === 'bullets') {
+    newJustification = editedBullets.map(b => b.trim()).filter(b => b);
+  } else {
+    newJustification = editedJustification;
+  }
+  const wasEdited = JSON.stringify(newJustification) !== JSON.stringify(currentAssessment.justification);
+  let updatedAssessment = { ...currentAssessment, justification: newJustification, essayContent: essayContent };
   setEditingJustification(false);
   setRevisionRationale('');
 
@@ -203,13 +217,49 @@ const handleSaveJustification = async () => {
               {editingJustification ? (
   <div className="edit-justification-container">
     <div className="edit-justification-label">Edit Justification</div>
-    <textarea
-      className="edit-justification-textarea large"
-      value={editedJustification}
-      onChange={e => setEditedJustification(e.target.value)}
-      placeholder="Write your assessment justification here..."
-      rows={8}
-    />
+    {assessmentType === 'bullets' ? (
+      <>
+        {editedBullets.map((bullet, idx) => (
+          <div key={idx} className="edit-bullet-row">
+            <textarea
+              className="edit-bullet-textarea"
+              value={bullet}
+              onChange={e => {
+                const newBullets = [...editedBullets];
+                newBullets[idx] = e.target.value;
+                setEditedBullets(newBullets);
+              }}
+              rows={2}
+            />
+            <button
+              className="remove-bullet-button"
+              onClick={() => {
+                setEditedBullets(editedBullets.filter((_, i) => i !== idx));
+              }}
+              aria-label="Remove bullet"
+              type="button"
+            >
+              &minus;
+            </button>
+          </div>
+        ))}
+        <button
+          className="add-bullet-button"
+          onClick={() => setEditedBullets([...editedBullets, ''])}
+          type="button"
+        >
+          + Add Bullet
+        </button>
+      </>
+    ) : (
+      <textarea
+        className="edit-justification-textarea large"
+        value={editedJustification}
+        onChange={e => setEditedJustification(e.target.value)}
+        placeholder="Write your assessment justification here..."
+        rows={8}
+      />
+    )}
     <div className="edit-justification-actions">
       <button className="save-justification-button" onClick={handleSaveJustification}>Save</button>
       <button className="cancel-justification-button" onClick={() => setEditingJustification(false)}>Cancel</button>
@@ -217,9 +267,23 @@ const handleSaveJustification = async () => {
   </div>
 ) : (
   <>
-    <p className="justification">{currentAssessment.justification}</p>
+    {assessmentType === 'bullets' && Array.isArray(currentAssessment.justification) ? (
+      <ul className="justification-list">
+        {currentAssessment.justification.map((item, idx) => (
+          <li key={idx}>{item}</li>
+        ))}
+      </ul>
+    ) : (
+      <p className="justification">{currentAssessment.justification}</p>
+    )}
     <button className="edit-justification-button" onClick={() => {
-      setEditedJustification(currentAssessment.justification || '');
+      if (assessmentType === 'bullets' && Array.isArray(currentAssessment.justification)) {
+        setEditedBullets(currentAssessment.justification);
+        setEditedJustification('');
+      } else {
+        setEditedJustification(currentAssessment.justification || '');
+        setEditedBullets([]);
+      }
       setEditingJustification(true);
     }}>Edit</button>
   </>

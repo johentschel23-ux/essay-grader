@@ -9,6 +9,9 @@ import RubricModal from './RubricModal';
 
 const Chat = ({ pdfFile }) => {
   const [pdfContent, setPdfContent] = useState(null);
+  // Assessment settings state
+  const [assessmentType, setAssessmentType] = useState('flow'); // 'flow' or 'bullets'
+  const [assessmentLength, setAssessmentLength] = useState('long'); // 'long', 'medium', 'short'
   
   // Add state for rubric functionality
   const [showRubricModal, setShowRubricModal] = useState(false);
@@ -103,13 +106,19 @@ const Chat = ({ pdfFile }) => {
   
   // Function to grade the current criterion
   const gradeCurrentCriterion = async (criteria, index) => {
+    // Pass assessmentType and assessmentLength as options
+    const options = {
+      assessmentType,
+      assessmentLength
+    };
+
     if (!criteria || index >= criteria.length) return;
     
     setIsProcessingRubric(true);
     
     try {
       const criterion = criteria[index];
-      const assessment = await geminiService.gradeSingleCriterion(pdfContent, criterion);
+      const assessment = await geminiService.gradeSingleCriterion(pdfContent, criterion, options);
       
       // Add the assessment to our state
       setCriteriaAssessments(prev => {
@@ -169,6 +178,11 @@ const Chat = ({ pdfFile }) => {
   
   // Function to finish the grading process
   const finishGrading = async () => {
+    const options = {
+      assessmentType,
+      assessmentLength
+    };
+
     setIsProcessingRubric(true);
     
     try {
@@ -182,7 +196,7 @@ const Chat = ({ pdfFile }) => {
       });
       
       // Generate the overall assessment
-      const assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores);
+      const assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores, options);
       setOverallAssessment(assessment);
     } catch (error) {
       console.error('Error generating overall assessment:', error);
@@ -236,30 +250,96 @@ const Chat = ({ pdfFile }) => {
   return (
     <div className="app-container">
       <div className="rubric-interface-container">
-        <div className="rubric-header-main">
-          <h2>Interactive Rubric Grading</h2>
-          <div className="rubric-actions">
-            <button 
-              className="rubric-button" 
-              onClick={() => setShowRubricModal(true)}
-              disabled={isProcessingRubric}
-            >
-              {rubricContent ? 'Edit Rubric' : 'Add Rubric'}
-            </button>
-            {rubricContent && !criteriaAssessments.length && (
-              <button 
-                className="start-grading-button" 
-                onClick={startInteractiveGrading}
-                disabled={isProcessingRubric}
-              >
-                {isProcessingRubric ? 'Processing...' : 'Start Grading'}
-              </button>
-            )}
-          </div>
-        </div>
-        
         {/* Main content area */}
         <div className="rubric-main-content">
+          {!rubricContent && (
+            <>
+              <div className="no-rubric-message-main">
+                <div className="welcome-message">
+                  <h3>Welcome to the Interactive Rubric Grader</h3>
+                  <p>This tool helps you grade essays using custom rubrics with AI assistance.</p>
+                  <ol className="instruction-list">
+                    <li>Upload a PDF essay using the panel on the left</li>
+                    <li>Click "Add Rubric" to enter your grading criteria</li>
+                    <li>Start the interactive grading process</li>
+                    <li>Grade each criterion and compare with AI assessment</li>
+                    <li>Review the final comprehensive assessment</li>
+                  </ol>
+                  <button 
+                    className="add-rubric-button"
+                    onClick={() => setShowRubricModal(true)}
+                  >
+                    Add Rubric
+                  </button>
+                </div>
+              </div>
+              <div className="assessment-settings-section">
+                <h4>Assessment Settings</h4>
+                <div className="assessment-settings">
+                  <div className="settings-row">
+                    <label htmlFor="assessment-type">Assessment Format:</label>
+                    <div className="settings-options">
+                      <label>
+                        <input
+                          type="radio"
+                          name="assessment-type"
+                          value="flow"
+                          checked={assessmentType === 'flow'}
+                          onChange={() => setAssessmentType('flow')}
+                        />
+                        Flow Text
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="assessment-type"
+                          value="bullets"
+                          checked={assessmentType === 'bullets'}
+                          onChange={() => setAssessmentType('bullets')}
+                        />
+                        Bullet Points
+                      </label>
+                    </div>
+                  </div>
+                  <div className="settings-row">
+                    <label htmlFor="assessment-length">Assessment Length:</label>
+                    <div className="settings-options">
+                      <label>
+                        <input
+                          type="radio"
+                          name="assessment-length"
+                          value="long"
+                          checked={assessmentLength === 'long'}
+                          onChange={() => setAssessmentLength('long')}
+                        />
+                        Long
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="assessment-length"
+                          value="medium"
+                          checked={assessmentLength === 'medium'}
+                          onChange={() => setAssessmentLength('medium')}
+                        />
+                        Medium
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name="assessment-length"
+                          value="short"
+                          checked={assessmentLength === 'short'}
+                          onChange={() => setAssessmentLength('short')}
+                        />
+                        Short
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
           {/* If we have criteria assessments, show the interactive grading interface */}
           {(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
             <InteractiveGrading
@@ -294,6 +374,7 @@ const Chat = ({ pdfFile }) => {
               essayContent={pdfContent}
               gradeCurrentCriterion={gradeCurrentCriterion}
               setGradingComplete={setGradingComplete}
+              assessmentType={assessmentType}
             />
           )}
           {/* If we don't have criteria assessments yet but have rubric content */}
@@ -313,28 +394,8 @@ const Chat = ({ pdfFile }) => {
             </div>
           )}
           
-          {/* If we don't have a rubric yet */}
-          {!rubricContent && (
-            <div className="no-rubric-message-main">
-              <div className="welcome-message">
-                <h3>Welcome to the Interactive Rubric Grader</h3>
-                <p>This tool helps you grade essays using custom rubrics with AI assistance.</p>
-                <ol className="instruction-list">
-                  <li>Upload a PDF essay using the panel on the left</li>
-                  <li>Click "Add Rubric" to enter your grading criteria</li>
-                  <li>Start the interactive grading process</li>
-                  <li>Grade each criterion and compare with AI assessment</li>
-                  <li>Review the final comprehensive assessment</li>
-                </ol>
-                <button 
-                  className="add-rubric-button"
-                  onClick={() => setShowRubricModal(true)}
-                >
-                  Add Rubric
-                </button>
-              </div>
-            </div>
-          )}
+
+
           
 
         </div>

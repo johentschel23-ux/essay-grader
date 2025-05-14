@@ -643,6 +643,135 @@
   border-top: 1px solid #e9ecef;
 }
 
+.assessment-settings-section {
+  margin: 40px auto 0 auto;
+  max-width: 520px;
+  background: linear-gradient(135deg, #fafdff 65%, #e6f0fa 100%);
+  border: 1.5px solid #d4e2f3;
+  border-radius: 18px;
+  box-shadow: 0 4px 18px rgba(60, 120, 180, 0.10);
+  padding: 32px 36px 24px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  transition: box-shadow 0.2s;
+  position: relative;
+}
+.assessment-settings-section:hover {
+  box-shadow: 0 8px 32px rgba(60, 120, 180, 0.13);
+}
+.assessment-settings-section h4 {
+  margin-top: 0;
+  margin-bottom: 22px;
+  color: #3170c7;
+  font-size: 1.22em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 0 #fafdff;
+}
+.assessment-settings {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 0;
+  gap: 16px;
+  padding: 0 0 8px 0;
+}
+.settings-row label[for] {
+  min-width: 150px;
+  font-weight: 600;
+  color: #2d3a4a;
+  font-size: 1.04em;
+}
+.settings-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  background: #f3f7fa;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(60,120,180,0.04);
+}
+.settings-options label {
+  font-weight: 500;
+  color: #3775a9;
+  font-size: 1em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  border-radius: 5px;
+  padding: 4px 10px 4px 4px;
+  transition: background 0.15s, color 0.15s;
+  position: relative;
+}
+.settings-options label:hover, .settings-options label:focus-within {
+  background: #e6f0fa;
+  color: #215b8b;
+}
+.assessment-settings-section input[type="radio"] {
+  accent-color: #4285f4;
+  margin-right: 4px;
+  width: 1.1em;
+  height: 1.1em;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+  box-shadow: 0 0 0 1.5px #b3c8e6;
+  outline: none;
+}
+.assessment-settings-section input[type="radio"]:focus {
+  box-shadow: 0 0 0 3px #b3d0fa;
+}
+@media (max-width: 600px) {
+  .assessment-settings-section {
+    max-width: 98vw;
+    padding: 16px 4vw 10px 4vw;
+  }
+  .settings-row label[for] {
+    min-width: 90px;
+    font-size: 0.98em;
+  }
+  .settings-options {
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 6px;
+  }
+}
+
+/* h4 styling is now included in the main .assessment-settings-section block above for better cohesion */
+/* .assessment-settings styling is now included in the main .assessment-settings-section block above for improved spacing and gap */
+/* .settings-row styling is now included and improved above */
+.settings-row label {
+  min-width: 140px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+.settings-options {
+  display: flex;
+  gap: 18px;
+  margin-left: 12px;
+}
+/* .settings-options label styling is now included and improved above */
+/* input[type="radio"] styling is now included and improved above */
+@media (max-width: 600px) {
+  .assessment-settings-section {
+    max-width: 98vw;
+    padding: 18px 8px 12px 8px;
+  }
+  .settings-row label {
+    min-width: 100px;
+  }
+  .settings-options {
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
 /* Rubric Modal Styles */
 
 .edit-justification-container {
@@ -650,6 +779,102 @@
   flex-direction: column;
   gap: 10px;
   margin-bottom: 10px;
+}
+
+/* Modern bullet edit row styling */
+.edit-bullet-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+  background: #fafdff;
+  border-radius: 8px;
+  border: 1px solid #e3eaf5;
+  box-shadow: 0 1px 3px rgba(60,120,180,0.04);
+  padding: 8px 12px;
+  transition: box-shadow 0.18s, border 0.18s;
+}
+.edit-bullet-row:focus-within {
+  border: 1.5px solid #4285f4;
+  box-shadow: 0 2px 8px rgba(66,133,244,0.13);
+}
+
+.edit-bullet-textarea {
+  flex: 1 1 auto;
+  min-height: 38px;
+  max-height: 90px;
+  font-size: 15px;
+  padding: 8px 12px;
+  border-radius: 7px;
+  border: 1.5px solid #b9d2f6;
+  background: #f8fafd;
+  resize: vertical;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  box-shadow: none;
+}
+.edit-bullet-textarea:focus {
+  outline: none;
+  border-color: #4285f4;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(66,133,244,0.09);
+}
+
+.remove-bullet-button {
+  background: #ea4335;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 1.3em;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 8px;
+  transition: background 0.18s, transform 0.12s;
+  box-shadow: 0 1px 4px rgba(234,67,53,0.10);
+}
+.remove-bullet-button:hover, .remove-bullet-button:focus {
+  background: #c5221f;
+  transform: scale(1.07);
+}
+
+.add-bullet-button {
+  margin-top: 4px;
+  align-self: flex-start;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(66,133,244,0.09);
+  transition: background 0.18s, transform 0.13s;
+}
+.add-bullet-button:hover, .add-bullet-button:focus {
+  background: #3367d6;
+  transform: translateY(-2px) scale(1.03);
+}
+
+.justification-list {
+  margin: 0 0 10px 20px;
+  padding: 0 0 0 18px;
+  list-style-type: disc;
+  color: #2c3e50;
+  font-size: 15.5px;
+  line-height: 1.7;
+  background: #fafdff;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(60,120,180,0.04);
+}
+.justification-list li {
+  margin-bottom: 7px;
+  padding-left: 2px;
+  word-break: break-word;
 }
 .edit-justification-textarea {
   width: 100%;
