@@ -1,10 +1,11 @@
 .advanced-pdf-viewer-container {
   display: flex;
   flex-direction: column;
-  height: 100%; /* Or a specific height like 80vh */
+  height: 100%;
   width: 100%;
-  overflow: hidden; /* Prevent container scrollbars if children manage their own */
-  background-color: #f0f0f0; /* Light background for the viewer area */
+  overflow: auto;
+  background-color: #f0f0f0;
+  position: relative;
 }
 
 .evidence-navigation {

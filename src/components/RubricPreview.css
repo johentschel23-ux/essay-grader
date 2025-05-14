@@ -1,0 +1,206 @@
+/* RubricPreview Table & Loading Styles */
+
+.rubric-table-wrapper {
+  overflow-x: auto;
+  margin: 18px 0 24px 0;
+}
+
+.rubric-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fafdff;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(66,133,244,0.10);
+  font-size: 1em;
+  margin-bottom: 18px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.rubric-table th, .rubric-table td {
+  padding: 16px 22px;
+  border-bottom: 1px solid #e3eaf5;
+  text-align: left;
+  vertical-align: top;
+  background: #fff;
+  font-size: 1.03em;
+}
+
+.rubric-table th {
+  background: linear-gradient(90deg, #e3f0fd 80%, #fafdff 100%);
+  color: #3775a9;
+  font-weight: 700;
+  font-size: 1.08em;
+  border-bottom: 2px solid #b3d0fa;
+}
+
+.rubric-table tr:last-child td {
+  border-bottom: none;
+}
+
+.rubric-table tr:nth-child(even) td {
+  background: #f3f8fe;
+}
+
+.rubric-table tr:hover td {
+  background: #eaf4fd;
+  transition: background 0.18s;
+}
+
+.rubric-table td {
+  border-left: 2px solid #f6faff;
+}
+.rubric-table td:first-child {
+  border-left: none;
+}
+
+.rubric-table th:first-child {
+  border-top-left-radius: 14px;
+}
+.rubric-table th:last-child {
+  border-top-right-radius: 14px;
+}
+.rubric-table tr:last-child td:first-child {
+  border-bottom-left-radius: 14px;
+}
+.rubric-table tr:last-child td:last-child {
+  border-bottom-right-radius: 14px;
+}
+
+.rubric-table.modern {
+  box-shadow: 0 6px 22px rgba(66,133,244,0.13);
+}
+
+.rubric-levels-list {
+  margin: 0;
+  padding-left: 18px;
+  list-style-type: disc;
+}
+
+.rubric-parse-error {
+  color: #ea4335;
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+
+.rubric-loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  margin: 24px 0;
+}
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 5px solid #e3f0fd;
+  border-top: 5px solid #4285f4;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 16px;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.rubric-loading-text {
+  color: #3775a9;
+  font-size: 1.1em;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+.start-grading-button {
+  background: #3775a9;
+  color: #fff;
+  font-size: 1.13em;
+  padding: 13px 34px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 10px;
+  box-shadow: 0 3px 16px rgba(66,133,244,0.13);
+  transition: background 0.16s, box-shadow 0.16s, transform 0.1s;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.01em;
+  position: relative;
+  z-index: 1;
+}
+
+.start-grading-button.prominent {
+  background: linear-gradient(90deg, #2563eb 0%, #4285f4 60%, #5ec6fa 100%);
+  color: #fff;
+  font-size: 1.23em;
+  font-weight: 800;
+  box-shadow: 0 8px 32px rgba(66,133,244,0.22), 0 2px 8px rgba(40,80,180,0.10);
+  border-radius: 18px;
+  padding: 18px 48px;
+  text-shadow: 0 2px 8px rgba(60,120,180,0.09);
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  letter-spacing: 0.01em;
+  position: relative;
+  z-index: 1;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.13s;
+  overflow: hidden;
+}
+
+.start-grading-button.prominent:after {
+  content: '';
+  position: absolute;
+  left: -25%;
+  top: -80%;
+  width: 150%;
+  height: 200%;
+  background: radial-gradient(circle, #a3e0ff 0%, transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 0;
+}
+
+.start-grading-button.prominent:hover:after,
+.start-grading-button.prominent:focus:after {
+  opacity: 0.13;
+}
+
+.start-grading-button.prominent:hover,
+.start-grading-button.prominent:focus {
+  background: linear-gradient(90deg, #174ea6 0%, #3775a9 70%, #51b1f6 100%);
+  box-shadow: 0 12px 36px rgba(66,133,244,0.32), 0 4px 16px rgba(40,80,180,0.13);
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  transform: translateY(-3px) scale(1.055);
+}
+
+.start-grading-button:disabled,
+.start-grading-button.prominent:disabled {
+  background: #b3d0fa !important;
+  color: #e5eaf5 !important;
+  cursor: not-allowed;
+  box-shadow: none;
+  text-shadow: none;
+  opacity: 0.7;
+}
+
+.start-grading-button svg {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0px;
+  margin-left: -4px;
+  filter: drop-shadow(0 1px 3px rgba(66,133,244,0.09));
+}
+
+.start-grading-button.prominent span {
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 1.08em;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}

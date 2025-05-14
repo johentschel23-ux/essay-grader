@@ -68,167 +68,6 @@ export const getGeminiResponse = async (prompt, options = {}) => {
 };
 
 /**
- * Generate proof points from an essay to support analysis
- * @param {string} essayContent - The content of the essay
- * @param {string} claim - The claim to find evidence for
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<Array>} - Array of proof points with page, paragraph, and highlight
- */
-export const generateProofPoints = async (essayContent, claim, options = {}) => {
-  const prompt = `
-    You are an expert essay analyzer. Find evidence in the following essay that supports or refutes this claim: "${claim}"
-    
-    The essay text includes special markers:
-    - [PAGE X] indicates the start of page X
-    - [LY] indicates line number Y
-    
-    For each piece of evidence, identify:
-    1. The page number where the evidence appears
-    2. A short, distinctive phrase or sentence (5-15 words) that directly supports/refutes the claim
-    3. The surrounding context containing the evidence
-    
-    IMPORTANT INSTRUCTIONS:
-    - Find at least 3 pieces of evidence (if available)
-    - For the highlight field, extract EXACT text from the essay - it must be a verbatim quote
-    - Choose phrases that are unique and will be easy to search for
-    - DO NOT include line number markers in your highlight text
-    - DO NOT span multiple paragraphs in a single highlight
-    - DO NOT modify, paraphrase or summarize the text in any way
-    - The highlight MUST be a continuous string of text that appears exactly as written in the essay
-    
-    YOU MUST FORMAT YOUR RESPONSE AS A VALID JSON ARRAY with objects containing:
-    { 
-      "page": number, 
-      "highlight": "exact phrase to highlight (must be verbatim)",
-      "context": "surrounding text for context"
-    }
-    
-    DO NOT include any explanatory text before or after the JSON array.
-    ONLY return the JSON array and nothing else.
-    
-    Essay:
-    ${essayContent}
-  `;
-  
-  try {
-    // Merge the provided options with our specific options for proof generation
-    const mergedOptions = {
-      ...options,
-      generationConfig: {
-        ...(options.generationConfig || {}),
-        temperature: 0.1, // Very low temperature for factual, structured responses
-        topP: 0.8,        // More focused sampling
-        topK: 20          // More deterministic outputs
-      }
-    };
-    
-    const response = await getGeminiResponse(prompt, mergedOptions);
-    
-    // Clean up the response to ensure it's valid JSON
-    let cleanedResponse = response.trim();
-    
-    // Remove any markdown code block markers
-    cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
-    cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
-    
-    // Remove any text before the first [ and after the last ]
-    const firstBracket = cleanedResponse.indexOf('[');
-    const lastBracket = cleanedResponse.lastIndexOf(']');
-    
-    if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
-      cleanedResponse = cleanedResponse.substring(firstBracket, lastBracket + 1);
-    }
-    
-    // Try to parse the cleaned response as JSON
-    try {
-      const parsedData = JSON.parse(cleanedResponse);
-      
-      // Validate the structure of each proof point
-      const validProofs = parsedData.filter(proof => {
-        return proof && 
-               typeof proof.page === 'number' &&
-               typeof proof.highlight === 'string' &&
-               typeof proof.context === 'string';
-      });
-      
-      // Extract keywords from highlights for search fallback
-      validProofs.forEach(proof => {
-        // Extract keywords from the highlight
-        const words = proof.highlight.split(/\s+/)
-          .filter(word => word.length > 3)
-          .filter(word => !['this', 'that', 'with', 'from', 'have', 'they', 'their', 'would', 'could', 'should'].includes(word.toLowerCase()));
-        
-        // Add keywords to the proof object
-        proof.keywords = words.slice(0, Math.min(5, words.length));
-        
-        // Clean up the context by removing coordinate markers if they exist
-        if (proof.context) {
-          proof.context = proof.context.replace(/\[L\d+\]\s*/g, '')
-                                      .replace(/\[X:\d+-\d+\]\s*/g, '')
-                                      .replace(/\[Y:\d+\]\s*/g, '');
-        }
-      });
-      
-      if (validProofs.length > 0) {
-        return validProofs;
-      } else {
-        console.warn('No valid proof points found in response');
-        throw new Error('No valid proof points found');
-      }
-    } catch (parseError) {
-      console.error('Failed to parse proof points as JSON:', parseError);
-      console.log('Raw response:', response);
-      console.log('Cleaned response:', cleanedResponse);
-      
-      // Attempt to extract paragraphs as a fallback
-      const paragraphs = response.split('\n\n').filter(p => p.trim().length > 50);
-      
-      if (paragraphs.length > 0) {
-        return paragraphs.slice(0, 3).map((paragraph, index) => {
-          // Extract a reasonable highlight from the paragraph
-          const sentences = paragraph.split(/[.!?]+/).filter(s => s.trim().length > 0);
-          const highlight = sentences.length > 0 ? 
-                          sentences[0].trim() : 
-                          paragraph.substring(0, Math.min(100, paragraph.length)).trim();
-          
-          // Extract some potential keywords from the paragraph
-          const words = paragraph.split(/\s+/)
-            .filter(word => word.length > 3)
-            .filter(word => !['this', 'that', 'with', 'from', 'have', 'they', 'their'].includes(word.toLowerCase()));
-          
-          return {
-            page: index + 1,
-            highlight: highlight,
-            context: paragraph.trim(),
-            keywords: words.slice(0, 5) // Take up to 5 keywords
-          };
-        });
-      }
-      
-      // Last resort fallback
-      return [
-        {
-          page: 1,
-          highlight: claim.length > 100 ? claim.substring(0, 100) + '...' : claim,
-          context: response.substring(0, 300) + '...',
-          keywords: claim.split(/\s+/).filter(word => word.length > 3).slice(0, 5)
-        }
-      ];
-    }
-  } catch (error) {
-    console.error('Error generating proof points:', error);
-    return [
-      {
-        page: 1,
-        highlight: "API error",
-        context: "Could not generate evidence due to an API error. Please try again later.",
-        keywords: ["error", "API", "generate"]
-      }
-    ];
-  }
-};
-
-/**
  * Extract criteria from a rubric
  * @param {string} rubricContent - The rubric content
  * @returns {Promise<Array>} - Array of criteria objects
@@ -313,6 +152,9 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
     justificationSchema = '"justification": "Your detailed justification without revealing the exact score",';
   }
 
+  // New instructions to relate evidence to justification
+  const relateInstruction = `\nFor each evidence quote, indicate which sentences or bullet points from your justification it supports. Return the indexes (starting from 0) as a field \"relatedAssessmentIndexes\" in each evidence object. If the justification is a paragraph, treat each sentence as a unit (split on periods, exclamation marks, or question marks). If it's a list, use each bullet as a unit.`;
+
   let lengthInstruction = '';
   if (assessmentLength === 'short') {
     lengthInstruction = 'Be concise and brief.';
@@ -334,13 +176,18 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
     Provide the following in your response:
     1. A justification for your assessment (without revealing the exact score). ${justificationInstruction} ${lengthInstruction}
     2. At least 3 specific quotes from the essay that support your assessment
-    3. Your numerical score (${criterion.scoreRange.min}-${criterion.scoreRange.max})
+    3. For each quote, indicate which sentences or bullet points from your justification it supports. ${relateInstruction}
+    4. Your numerical score (${criterion.scoreRange.min}-${criterion.scoreRange.max})
     
     FORMAT YOUR RESPONSE AS A VALID JSON object:
     {
       ${justificationSchema}
       "evidence": [
-        { "quote": "exact quote from essay", "paragraph": "paragraph number or location" },
+        { 
+          "quote": "exact quote from essay", 
+          "paragraph": "paragraph number or location",
+          "relatedAssessmentIndexes": [array of integers, optional]
+        },
         ...
       ],
       "score": number
@@ -586,7 +433,7 @@ export const reviseCriterionScoreWithJustification = async (
 // Create a named export object
 const geminiService = {
   getGeminiResponse,
-  generateProofPoints,
+
   extractRubricCriteria,
   gradeSingleCriterion,
   generateOverallAssessment,

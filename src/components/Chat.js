@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import './Chat.css';
 import { extractTextFromPdf } from '../utils/pdfUtils';
 import geminiService from '../services/geminiService';
+import { IconList, IconAlignLeft, IconAlignJustified, IconTextCaption, IconTextSize } from './icons';
+import AssessmentSettingsSection from './AssessmentSettingsSection';
+import RubricPreview from './RubricPreview';
+import WelcomeSection from './WelcomeSection';
 // import AdvancedPdfViewer from './AdvancedPdfViewer';
 import InteractiveGrading from './InteractiveGrading';
 import OverallAssessment from './OverallAssessment';
@@ -252,153 +256,64 @@ const Chat = ({ pdfFile }) => {
       <div className="rubric-interface-container">
         {/* Main content area */}
         <div className="rubric-main-content">
-          {!rubricContent && (
-            <>
-              <div className="no-rubric-message-main">
-                <div className="welcome-message">
-                  <h3>Welcome to the Interactive Rubric Grader</h3>
-                  <p>This tool helps you grade essays using custom rubrics with AI assistance.</p>
-                  <ol className="instruction-list">
-                    <li>Upload a PDF essay using the panel on the left</li>
-                    <li>Click "Add Rubric" to enter your grading criteria</li>
-                    <li>Start the interactive grading process</li>
-                    <li>Grade each criterion and compare with AI assessment</li>
-                    <li>Review the final comprehensive assessment</li>
-                  </ol>
-                  <button 
-                    className="add-rubric-button"
-                    onClick={() => setShowRubricModal(true)}
-                  >
-                    Add Rubric
-                  </button>
-                </div>
-              </div>
-              <div className="assessment-settings-section">
-                <h4>Assessment Settings</h4>
-                <div className="assessment-settings">
-                  <div className="settings-row">
-                    <label htmlFor="assessment-type">Assessment Format:</label>
-                    <div className="settings-options">
-                      <label>
-                        <input
-                          type="radio"
-                          name="assessment-type"
-                          value="flow"
-                          checked={assessmentType === 'flow'}
-                          onChange={() => setAssessmentType('flow')}
-                        />
-                        Flow Text
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="assessment-type"
-                          value="bullets"
-                          checked={assessmentType === 'bullets'}
-                          onChange={() => setAssessmentType('bullets')}
-                        />
-                        Bullet Points
-                      </label>
-                    </div>
-                  </div>
-                  <div className="settings-row">
-                    <label htmlFor="assessment-length">Assessment Length:</label>
-                    <div className="settings-options">
-                      <label>
-                        <input
-                          type="radio"
-                          name="assessment-length"
-                          value="long"
-                          checked={assessmentLength === 'long'}
-                          onChange={() => setAssessmentLength('long')}
-                        />
-                        Long
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="assessment-length"
-                          value="medium"
-                          checked={assessmentLength === 'medium'}
-                          onChange={() => setAssessmentLength('medium')}
-                        />
-                        Medium
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="assessment-length"
-                          value="short"
-                          checked={assessmentLength === 'short'}
-                          onChange={() => setAssessmentLength('short')}
-                        />
-                        Short
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-          {/* If we have criteria assessments, show the interactive grading interface */}
-          {(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
-            <InteractiveGrading
-              isProcessingRubric={isProcessingRubric}
-              rubricCriteria={rubricCriteria}
-              gradingComplete={gradingComplete}
-              renderOverallAssessment={() => (
-                <OverallAssessment
-                  overallAssessment={overallAssessment}
-                  criteriaAssessments={criteriaAssessments}
-                  teacherScores={teacherScores}
-                  restartGrading={restartGrading}
-                  setGradingComplete={setGradingComplete}
-                />
-              )}
+  {!rubricContent ? (
+    <WelcomeSection onAddRubric={() => setShowRubricModal(true)} />
+  ) : (
+    <>
+      {!(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
+        <AssessmentSettingsSection
+          assessmentType={assessmentType}
+          setAssessmentType={setAssessmentType}
+          assessmentLength={assessmentLength}
+          setAssessmentLength={setAssessmentLength}
+        />
+      )}
+      {(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
+        <InteractiveGrading
+          isProcessingRubric={isProcessingRubric}
+          rubricCriteria={rubricCriteria}
+          gradingComplete={gradingComplete}
+          renderOverallAssessment={() => (
+            <OverallAssessment
               overallAssessment={overallAssessment}
               criteriaAssessments={criteriaAssessments}
-              setCriteriaAssessments={setCriteriaAssessments}
-              currentCriterionIndex={currentCriterionIndex}
-              showEvidence={showEvidence}
-              setShowEvidence={setShowEvidence}
               teacherScores={teacherScores}
-              handleTeacherScoreInput={handleTeacherScoreInput}
-              showAIScores={showAIScores}
-              revealAIScore={revealAIScore}
-              moveToNextCriterion={moveToNextCriterion}
-              moveToPreviousCriterion={moveToPreviousCriterion}
-              finishGrading={finishGrading}
               restartGrading={restartGrading}
-              pdfFile={pdfFile}
-              activePdfEvidence={activePdfEvidence}
-              essayContent={pdfContent}
-              gradeCurrentCriterion={gradeCurrentCriterion}
               setGradingComplete={setGradingComplete}
-              assessmentType={assessmentType}
             />
           )}
-          {/* If we don't have criteria assessments yet but have rubric content */}
-          {!criteriaAssessments.length && !isProcessingRubric && rubricContent && (
-            <div className="rubric-preview-main">
-              <h3>Current Rubric:</h3>
-              <pre className="rubric-content-preview">{rubricContent}</pre>
-              <div className="start-grading-container">
-                <p>Click "Start Grading" to begin the interactive grading process.</p>
-                <button 
-                  className="start-grading-button"
-                  onClick={startInteractiveGrading}
-                >
-                  Start Grading
-                </button>
-              </div>
-            </div>
-          )}
-          
-
-
-          
-
-        </div>
+          overallAssessment={overallAssessment}
+          criteriaAssessments={criteriaAssessments}
+          setCriteriaAssessments={setCriteriaAssessments}
+          currentCriterionIndex={currentCriterionIndex}
+          showEvidence={showEvidence}
+          setShowEvidence={setShowEvidence}
+          teacherScores={teacherScores}
+          handleTeacherScoreInput={handleTeacherScoreInput}
+          showAIScores={showAIScores}
+          revealAIScore={revealAIScore}
+          moveToNextCriterion={moveToNextCriterion}
+          moveToPreviousCriterion={moveToPreviousCriterion}
+          finishGrading={finishGrading}
+          restartGrading={restartGrading}
+          pdfFile={pdfFile}
+          activePdfEvidence={activePdfEvidence}
+          essayContent={pdfContent}
+          gradeCurrentCriterion={gradeCurrentCriterion}
+          setGradingComplete={setGradingComplete}
+          assessmentType={assessmentType}
+        />
+      )}
+      {/* If we don't have criteria assessments yet but have rubric content */}
+      {!criteriaAssessments.length && !isProcessingRubric && rubricContent && (
+        <RubricPreview
+          rubricContent={rubricContent}
+          startGrading={startInteractiveGrading}
+        />
+      )}
+    </>
+  )}
+</div>
       </div>  
       {/* Rubric Modal */}
       {showRubricModal && (

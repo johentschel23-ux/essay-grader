@@ -1,5 +1,128 @@
 @import './Chat.css';
 
+.evidence-highlight {
+  background-color: #fff9c4;
+  transition: background-color 0.2s;
+}
+
+.assessment-highlight {
+  background-color: #bbdefb;
+  transition: background-color 0.2s;
+}
+
+
+.grading-navigation-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  padding: 1.5rem 0 0 0;
+  border-top: 1px solid #e0e0e0;
+}
+
+.grading-nav-btn {
+  flex: 1 1 0;
+  font-size: 1.2rem;
+  padding: 0.9rem 0;
+  border: none;
+  border-radius: 8px;
+  background: #e3f2fd;
+  color: #1565c0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+  box-shadow: 0 1px 4px rgba(21,101,192,0.08);
+}
+.grading-nav-btn.prev {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
+.grading-nav-btn.next {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+.grading-nav-btn.finish {
+  background: #c8e6c9;
+  color: #1b5e20;
+}
+.grading-nav-btn:disabled {
+  background: #f5f5f5;
+  color: #bdbdbd;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Remove old navigation button styles */
+.prev-button, .next-button, .finish-button {
+  display: none !important;
+}
+
+.edit-revises-score-tag {
+  display: flex;
+  align-items: center;
+  font-size: 0.98rem;
+  background: #fffde7;
+  color: #b28704;
+  border-radius: 6px;
+  padding: 0.18rem 0.7rem 0.18rem 0.4rem;
+  border: 1px solid #ffe082;
+  font-weight: 500;
+  gap: 0.2rem;
+  box-shadow: 0 1px 3px rgba(251,192,45,0.06);
+  margin-right: 0.3rem;
+}
+.edit-revises-score-tag svg {
+  margin-right: 0.2rem;
+  flex-shrink: 0;
+}
+.assessment-label {
+  font-size: 1.13rem;
+  font-weight: 600;
+  color: #263238;
+  letter-spacing: 0.01em;
+}
+.edit-justification-icon-btn {
+  background: none;
+  border: none;
+  padding: 0.3rem 0.3rem 0.3rem 0.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.16s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.edit-justification-icon-btn svg {
+  display: block;
+  stroke: #616161;
+}
+.edit-justification-icon-btn:hover, .edit-justification-icon-btn:focus {
+  background: #e3f2fd;
+  outline: none;
+}
+
+/* Remove old edit button style */
+.edit-justification-button {
+  display: none !important;
+}
+
+.edit-justification-revision-warning {
+  display: flex;
+  align-items: center;
+  background: #fffde7;
+  color: #795548;
+  border: 1px solid #ffe082;
+  border-radius: 7px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1.1rem;
+  font-size: 1.01rem;
+  box-shadow: 0 1px 4px rgba(251,192,45,0.07);
+}
+.edit-justification-revision-warning svg {
+  flex-shrink: 0;
+}
+
 /* You may override or extend styles specific to InteractiveGrading here if needed */
 
 .grading-overlay-loading {

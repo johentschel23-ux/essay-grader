@@ -2,6 +2,8 @@ import React from 'react';
 import './InteractiveGrading.css';
 
 import AdvancedPdfViewer from './AdvancedPdfViewer';
+import AssessmentSection from './AssessmentSection';
+import EvidenceSection from './EvidenceSection';
 
 const InteractiveGrading = ({
   isProcessingRubric,
@@ -46,6 +48,10 @@ const InteractiveGrading = ({
   const [editingJustification, setEditingJustification] = React.useState(false);
   const [editedJustification, setEditedJustification] = React.useState('');
   const [editedBullets, setEditedBullets] = React.useState([]);
+
+  // State for interactive highlight on hover
+  const [hoveredEvidenceIndex, setHoveredEvidenceIndex] = React.useState(null);
+  const [hoveredAssessmentIndexes, setHoveredAssessmentIndexes] = React.useState([]);
 
   React.useEffect(() => {
     if (criteriaAssessments.length > 0 && currentCriterionIndex < criteriaAssessments.length) {
@@ -213,124 +219,29 @@ const InteractiveGrading = ({
               ))}
             </div>
             <div className="criterion-assessment">
-              <h4>Assessment</h4>
-              {editingJustification ? (
-  <div className="edit-justification-container">
-    <div className="edit-justification-label">Edit Justification</div>
-    {assessmentType === 'bullets' ? (
-      <>
-        {editedBullets.map((bullet, idx) => (
-          <div key={idx} className="edit-bullet-row">
-            <textarea
-              className="edit-bullet-textarea"
-              value={bullet}
-              onChange={e => {
-                const newBullets = [...editedBullets];
-                newBullets[idx] = e.target.value;
-                setEditedBullets(newBullets);
-              }}
-              rows={2}
-            />
-            <button
-              className="remove-bullet-button"
-              onClick={() => {
-                setEditedBullets(editedBullets.filter((_, i) => i !== idx));
-              }}
-              aria-label="Remove bullet"
-              type="button"
-            >
-              &minus;
-            </button>
-          </div>
-        ))}
-        <button
-          className="add-bullet-button"
-          onClick={() => setEditedBullets([...editedBullets, ''])}
-          type="button"
-        >
-          + Add Bullet
-        </button>
-      </>
-    ) : (
-      <textarea
-        className="edit-justification-textarea large"
-        value={editedJustification}
-        onChange={e => setEditedJustification(e.target.value)}
-        placeholder="Write your assessment justification here..."
-        rows={8}
-      />
-    )}
-    <div className="edit-justification-actions">
-      <button className="save-justification-button" onClick={handleSaveJustification}>Save</button>
-      <button className="cancel-justification-button" onClick={() => setEditingJustification(false)}>Cancel</button>
-    </div>
-  </div>
-) : (
-  <>
-    {assessmentType === 'bullets' && Array.isArray(currentAssessment.justification) ? (
-      <ul className="justification-list">
-        {currentAssessment.justification.map((item, idx) => (
-          <li key={idx}>{item}</li>
-        ))}
-      </ul>
-    ) : (
-      <p className="justification">{currentAssessment.justification}</p>
-    )}
-    <button className="edit-justification-button" onClick={() => {
-      if (assessmentType === 'bullets' && Array.isArray(currentAssessment.justification)) {
-        setEditedBullets(currentAssessment.justification);
-        setEditedJustification('');
-      } else {
-        setEditedJustification(currentAssessment.justification || '');
-        setEditedBullets([]);
-      }
-      setEditingJustification(true);
-    }}>Edit</button>
-  </>
-)}
-              {!showEvidence ? (
-                <button 
-                  className="show-evidence-button"
-                  onClick={() => setShowEvidence(true)}
-                >
-                  Show Evidence
-                </button>
-              ) : (
-                <div className="evidence-container">
-                  <h4>Evidence from Essay</h4>
-                  {Array.isArray(currentAssessment.evidence) && currentAssessment.evidence.length > 0 ? (
-                    currentAssessment.evidence.map((item, index) => {
-                      // Support both 'highlight' and 'quote' keys for evidence
-                      const quote = item.highlight || item.quote || 'No quote available';
-                      return (
-                        <div key={index} className="evidence-item">
-                          <div className="evidence-location">
-                            <span className="evidence-page">Page {item.page || item.paragraph || 'N/A'}</span>
-                          </div>
-                          <blockquote className="evidence-quote">"{quote}"</blockquote>
-                          {item.context && <div className="evidence-context">Context: {item.context}</div>}
-                          {item.keywords && item.keywords.length > 0 && (
-                            <div className="evidence-keywords">
-                              <small>Key terms: {item.keywords.join(', ')}</small>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <div className="evidence-not-found-warning">
-                      <p>No evidence quotes available for this criterion.</p>
-                    </div>
-                  )}
-                  <button 
-                    className="hide-evidence-button"
-                    onClick={() => setShowEvidence(false)}
-                  >
-                    Hide Evidence
-                  </button>
-                </div>
-              )}
+              <AssessmentSection
+                assessmentType={assessmentType}
+                currentAssessment={currentAssessment}
+                editingJustification={editingJustification}
+                editedJustification={editedJustification}
+                editedBullets={editedBullets}
+                setEditedJustification={setEditedJustification}
+                setEditedBullets={setEditedBullets}
+                setEditingJustification={setEditingJustification}
+                hoveredAssessmentIndexes={hoveredAssessmentIndexes}
+                setHoveredAssessmentIndexes={setHoveredAssessmentIndexes}
+                handleSaveJustification={handleSaveJustification}
+              />
             </div>
+            <EvidenceSection
+              showEvidence={showEvidence}
+              setShowEvidence={setShowEvidence}
+              currentAssessment={currentAssessment}
+              hoveredEvidenceIndex={hoveredEvidenceIndex}
+              setHoveredEvidenceIndex={setHoveredEvidenceIndex}
+              hoveredAssessmentIndexes={hoveredAssessmentIndexes}
+              setHoveredAssessmentIndexes={setHoveredAssessmentIndexes}
+            />
             <div className="scoring-section">
               <div className="teacher-scoring">
                 <h4>Your Score</h4>
@@ -393,30 +304,30 @@ const InteractiveGrading = ({
               </div>
             </div>
           </div>
-        <div className="grading-navigation">
-          <button 
-            className="prev-button"
-            onClick={moveToPreviousCriterion}
-            disabled={currentCriterionIndex === 0}
-          >
-            Previous
-          </button>
-          {currentCriterionIndex < rubricCriteria.length - 1 ? (
-            <button 
-              className="next-button"
-              onClick={moveToNextCriterion}
-            >
-              Next
-            </button>
-          ) : (
-            <button
-              className="finish-button"
-              onClick={handleFinishGrading}
-            >
-              Finish
-            </button>
-          )}
-        </div>
+        <div className="grading-navigation-row">
+  <button
+    className="grading-nav-btn prev"
+    onClick={moveToPreviousCriterion}
+    disabled={currentCriterionIndex === 0}
+  >
+    ◀ Previous
+  </button>
+  {currentCriterionIndex < rubricCriteria.length - 1 ? (
+    <button
+      className="grading-nav-btn next"
+      onClick={moveToNextCriterion}
+    >
+      Next ▶
+    </button>
+  ) : (
+    <button
+      className="grading-nav-btn finish"
+      onClick={handleFinishGrading}
+    >
+      Finish Grading
+    </button>
+  )}
+</div>
       </div>
       {/* Right Column: PDF Viewer */}
       <div className="pdf-viewer-column">
