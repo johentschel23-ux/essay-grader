@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './Chat.css';
 import { extractTextFromPdf } from '../utils/pdfUtils';
 import geminiService from '../services/geminiService';
-import { IconList, IconAlignLeft, IconAlignJustified, IconTextCaption, IconTextSize } from './icons';
+
 import AssessmentSettingsSection from './AssessmentSettingsSection';
 import RubricPreview from './RubricPreview';
 import WelcomeSection from './WelcomeSection';
@@ -10,13 +10,39 @@ import WelcomeSection from './WelcomeSection';
 import InteractiveGrading from './InteractiveGrading';
 import OverallAssessment from './OverallAssessment';
 import RubricModal from './RubricModal';
+// import ContextDialog from './ContextDialog';
+
 
 const Chat = ({ pdfFile }) => {
+  // ...existing state...
+  const [criterionStartTime, setCriterionStartTime] = useState(null); // Track when user starts a criterion
+  // === Context dump state (temporarily disabled) ===
+  // const [showContextDialog, setShowContextDialog] = useState(false);
+  // const [contextList, setContextList] = useState([]);
+  // const [contextId, setContextId] = useState(null);
   const [pdfContent, setPdfContent] = useState(null);
   // Assessment settings state
   const [assessmentType, setAssessmentType] = useState('flow'); // 'flow' or 'bullets'
   const [assessmentLength, setAssessmentLength] = useState('long'); // 'long', 'medium', 'short'
-  
+
+  // Cache context dump whenever it changes and is non-empty (temporarily disabled)
+  // React.useEffect(() => {
+  //   const cacheContext = async () => {
+  //     if (contextList && contextList.length > 0) {
+  //       try {
+  //         const id = await geminiService.uploadContextDump(contextList);
+  //         setContextId(id);
+  //       } catch (err) {
+  //         setContextId(null);
+  //         console.error('Failed to cache context dump:', err);
+  //       }
+  //     } else {
+  //       setContextId(null);
+  //     }
+  //   };
+  //   cacheContext();
+  // }, [contextList]);
+
   // Add state for rubric functionality
   const [showRubricModal, setShowRubricModal] = useState(false);
   const [rubricContent, setRubricContent] = useState('');
@@ -98,6 +124,7 @@ const Chat = ({ pdfFile }) => {
 
       // Start grading the first criterion
       if (criteria.length > 0) {
+        setCriterionStartTime(Date.now()); // Start timer for first criterion
         await gradeCurrentCriterion(criteria, 0);
       }
     } catch (error) {
@@ -122,15 +149,22 @@ const Chat = ({ pdfFile }) => {
     
     try {
       const criterion = criteria[index];
-      const assessment = await geminiService.gradeSingleCriterion(pdfContent, criterion, options);
-      
+      // Always pass contextId for context-aware grading
+      const assessment = await geminiService.gradeSingleCriterion(pdfContent, criterion, options, null); // Temporarily disabled contextId
       // Add the assessment to our state
       setCriteriaAssessments(prev => {
         const newAssessments = [...prev];
         newAssessments[index] = {
           ...criterion,
           ...assessment,
-          aiScore: assessment.score
+          assessment_text: assessment.assessmentText || assessment.assessment_text || assessment.text || null,
+          aiScore: assessment.aiScore ?? assessment.new_ai_grade ?? assessment.score ?? null, // Always set aiScore for UI
+          originalAiScore: null, // No revision yet
+          revisionRationale: null, // No revision yet
+          revised_assessment_text: assessment.revisedAssessmentText || assessment.revised_assessment_text || null,
+          old_ai_grade: assessment.oldAiScore || assessment.old_ai_grade || null,
+          new_ai_grade: assessment.aiScore ?? assessment.new_ai_grade ?? assessment.score ?? null,
+          user_grade: (teacherScores[criterion.id || criterion.title || String(index)] ?? null)
         };
         return newAssessments;
       });
@@ -143,10 +177,13 @@ const Chat = ({ pdfFile }) => {
   
   // Function to handle teacher score input
   const handleTeacherScoreInput = (criterionId, score) => {
-    setTeacherScores(prev => ({
-      ...prev,
-      [criterionId]: score
-    }));
+    setTeacherScores(prev => {
+      // Only update user grade in state; DB write is handled in moveToNextCriterion
+      return {
+        ...prev,
+        [criterionId]: score
+      };
+    });
   };
   
   // Function to reveal AI score for a criterion
@@ -159,6 +196,64 @@ const Chat = ({ pdfFile }) => {
   
   // Function to move to the next criterion
   const moveToNextCriterion = async () => {
+    // === Record current criterion data before moving ===
+    if (criteriaAssessments[currentCriterionIndex]) {
+      const assessment = criteriaAssessments[currentCriterionIndex];
+      const criterion = rubricCriteria[currentCriterionIndex];
+      const essay_id = pdfContent ? String(pdfContent.length) : String(Date.now());
+      const criterion_id = criterion.id || criterion.title || String(currentCriterionIndex);
+      // Robust extraction of fields for DB
+      let assessment_text = null;
+      let revised_assessment_text = null;
+      let old_ai_grade = null;
+      let new_ai_grade = null;
+      // If revised, store both old and new
+      // Always record old_ai_grade (initial AI score), even if no revision
+      if (assessment.originalAiScore !== undefined && assessment.originalAiScore !== null) {
+        old_ai_grade = assessment.originalAiScore;
+      } else if (assessment.oldAiScore !== undefined && assessment.oldAiScore !== null) {
+        old_ai_grade = assessment.oldAiScore;
+      } else if (assessment.old_ai_grade !== undefined && assessment.old_ai_grade !== null) {
+        old_ai_grade = assessment.old_ai_grade;
+      } else if (assessment.aiScore !== undefined && assessment.aiScore !== null) {
+        old_ai_grade = assessment.aiScore;
+      } else if (assessment.new_ai_grade !== undefined && assessment.new_ai_grade !== null) {
+        old_ai_grade = assessment.new_ai_grade;
+      } else if (assessment.score !== undefined && assessment.score !== null) {
+        old_ai_grade = assessment.score;
+      } else {
+        old_ai_grade = null;
+      }
+      assessment_text = assessment.justification || assessment.assessment_text || assessment.assessmentText || null;
+      if (assessment.revisionRationale || assessment.revisedAssessmentText || assessment.revised_assessment_text) {
+        revised_assessment_text = assessment.revisedAssessmentText || assessment.revised_assessment_text || null;
+        new_ai_grade = assessment.aiScore ?? assessment.new_ai_grade ?? assessment.score ?? null;
+      } else {
+        revised_assessment_text = null;
+        new_ai_grade = null;
+      }
+      const user_grade = assessment.user_grade ?? teacherScores[criterion_id] ?? null;
+      const time_spent_seconds = criterionStartTime ? (Date.now() - criterionStartTime) / 1000 : null;
+      if (window.electronAPI && typeof window.electronAPI.recordGrade === 'function') {
+        window.electronAPI.recordGrade({
+          essay_id,
+          criterion_id,
+          assessment_text,
+          revised_assessment_text,
+          old_ai_grade,
+          new_ai_grade,
+          user_grade,
+          time_spent_seconds,
+          extra_data: {
+            assessment,
+            criterion,
+            timestamp: new Date().toISOString()
+          }
+        });
+      }
+    }
+    // === End record ===
+
     const nextIndex = currentCriterionIndex + 1;
     if (nextIndex < rubricCriteria.length) {
       // If the assessment for the next criterion does not exist, grade it first
@@ -167,6 +262,7 @@ const Chat = ({ pdfFile }) => {
       }
       setCurrentCriterionIndex(nextIndex);
       setShowEvidence(false);
+      setCriterionStartTime(Date.now()); // Reset timer for next criterion
     }
     // Do not call finishGrading here; the UI will handle calling finishGrading when on the last criterion.
   };
@@ -182,6 +278,44 @@ const Chat = ({ pdfFile }) => {
   
   // Function to finish the grading process
   const finishGrading = async () => {
+    // === Record last criterion data on finish ===
+    if (criteriaAssessments[currentCriterionIndex]) {
+      const assessment = criteriaAssessments[currentCriterionIndex];
+      const criterion = rubricCriteria[currentCriterionIndex];
+      const essay_id = pdfContent ? String(pdfContent.length) : String(Date.now());
+      const criterion_id = criterion.id || criterion.title || String(currentCriterionIndex);
+      const user_grade = assessment.user_grade ?? teacherScores[criterion_id] ?? null;
+      const assessment_text = assessment.assessment_text ?? assessment.assessmentText ?? assessment.text ?? null;
+      const revised_assessment_text = assessment.revised_assessment_text ?? assessment.revisedAssessmentText ?? null;
+      const old_ai_grade = assessment.old_ai_grade ?? assessment.oldAiScore ?? null;
+      const new_ai_grade = assessment.new_ai_grade ?? assessment.aiScore ?? assessment.score ?? null;
+      const time_spent_seconds = criterionStartTime ? (Date.now() - criterionStartTime) / 1000 : null;
+      if (window.electronAPI && typeof window.electronAPI.recordGrade === 'function') {
+        window.electronAPI.recordGrade({
+          essay_id,
+          criterion_id,
+          ai_grade: old_ai_grade ?? new_ai_grade,
+          user_grade,
+          assessment_text,
+          revised_assessment_text,
+          old_ai_grade,
+          new_ai_grade,
+          time_spent_seconds,
+          extra_data: {
+            assessment,
+            criterion,
+            timestamp: new Date().toISOString(),
+            user_grade,
+            assessment_text,
+            revised_assessment_text,
+            old_ai_grade,
+            new_ai_grade,
+            time_spent_seconds
+          }
+        });
+      }
+    }
+    // === End record ===
     const options = {
       assessmentType,
       assessmentLength
@@ -189,46 +323,45 @@ const Chat = ({ pdfFile }) => {
 
     setIsProcessingRubric(true);
     
+    // Prepare criteria with scores for the overall assessment
+    const criteriaWithScores = criteriaAssessments.map((assessment) => {
+      const criterionId = assessment.id;
+      return {
+        ...assessment,
+        teacherScore: teacherScores[criterionId] || null
+      };
+    });
+    // Generate the overall assessment
     try {
-      // Prepare criteria with scores for the overall assessment
-      const criteriaWithScores = criteriaAssessments.map((assessment, index) => {
-        const criterionId = assessment.id;
-        return {
-          ...assessment,
-          teacherScore: teacherScores[criterionId] || null
-        };
-      });
-      
-      // Generate the overall assessment
-      const assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores, options);
+      let assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores, options);
+      console.log('[finishGrading] Raw LLM assessment:', assessment);
+      if (typeof assessment === 'string') {
+        try {
+          assessment = JSON.parse(assessment);
+        } catch (e) {
+          console.error('[finishGrading] Failed to parse LLM assessment as JSON:', e, assessment);
+          assessment = {
+            strengths: 'Error parsing assessment',
+            weaknesses: 'The LLM response could not be parsed as JSON.',
+            recommendations: '',
+            finalScore: null,
+            criteria: []
+          };
+        }
+      }
+      console.log('[finishGrading] Parsed overall assessment:', assessment);
       setOverallAssessment(assessment);
-    } catch (error) {
-      console.error('Error generating overall assessment:', error);
-    } finally {
-      setIsProcessingRubric(false);
+    } catch (err) {
+      console.error('[finishGrading] Error from generateOverallAssessment:', err);
+      setOverallAssessment({
+        strengths: 'Error generating assessment',
+        weaknesses: err.message || 'Unknown error',
+        recommendations: '',
+        finalScore: null,
+        criteria: []
+      });
     }
-  };
-
-  // End of finishGrading
-
-
-  // Function to show evidence highlights in the PDF viewer
-  const handleShowEvidenceInViewer = (evidenceArray) => {
-    if (evidenceArray && evidenceArray.length > 0) {
-      const transformedEvidence = evidenceArray.map(ev => ({
-        id: ev.id || String(Math.random()), // Ensure an ID
-        position: { 
-            pageNumber: ev.pageNumber || ev.page, // Handle variations in prop name
-            // boundingRect: { x1, y1, x2, y2, width, height }
-        },
-        content: { text: ev.highlight }, // Text to search for
-        comment: { text: ev.comment || ev.context || '' } // Comment/context for the highlight
-      }));
-      console.log("Chat.js: Setting active PDF evidence for viewer:", transformedEvidence);
-      setActivePdfEvidence(transformedEvidence);
-    } else {
-      setActivePdfEvidence(null);
-    }
+    setIsProcessingRubric(false);
   };
 
   // Function to restart the grading process
@@ -243,12 +376,6 @@ const Chat = ({ pdfFile }) => {
     setShowEvidence(false);
     setActivePdfEvidence(null);
     setRubricContent(''); // Optionally clear rubric text as well
-  };
-
-
-  const handleClearEvidenceInViewer = () => {
-    console.log("Chat.js: Clearing active PDF evidence.");
-    setActivePdfEvidence(null);
   };
 
   return (
@@ -268,6 +395,21 @@ const Chat = ({ pdfFile }) => {
           setAssessmentLength={setAssessmentLength}
         />
       )}
+      {/* Context dump button (visible before grading starts) */}
+      {/* Temporarily disabled */}
+      {/* {!(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '18px 0 10px 0', gap: 12 }}>
+          <button
+            className="add-context-btn"
+            type="button"
+            onClick={() => setShowContextDialog(true)}
+            style={{ fontSize: '1.07em', display: 'flex', alignItems: 'center', gap: 7 }}
+            title="Add optional context information (e.g., course outline, assignment prompt)"
+          >
+            <span style={{ fontSize: 22, marginRight: 6 }}>➕</span> Add Context
+          </button>
+        </div>
+      )} */}
       {(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
         <InteractiveGrading
           isProcessingRubric={isProcessingRubric}
@@ -302,15 +444,23 @@ const Chat = ({ pdfFile }) => {
           gradeCurrentCriterion={gradeCurrentCriterion}
           setGradingComplete={setGradingComplete}
           assessmentType={assessmentType}
+          // Temporarily disabled
+          // contextList={contextList}
+          // contextId={contextId}
         />
       )}
       {/* If we don't have criteria assessments yet but have rubric content */}
+
+
       {!criteriaAssessments.length && !isProcessingRubric && rubricContent && (
         <RubricPreview
           rubricContent={rubricContent}
           startGrading={startInteractiveGrading}
+          onReviseRubric={() => setShowRubricModal(true)}
+          pdfUploaded={!!pdfFile}
         />
       )}
+
     </>
   )}
 </div>

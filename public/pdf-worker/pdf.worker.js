@@ -1,1 +1,0 @@
-Not found: /pdfjs-dist@4.8.69/build/pdf.worker.js

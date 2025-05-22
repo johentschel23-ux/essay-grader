@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './RubricModal.css';
 
 const RubricModal = ({
@@ -12,6 +12,8 @@ const RubricModal = ({
   setGradingComplete,
   setOverallAssessment
 }) => {
+  // Use local state for the modal
+  const [localRubric, setLocalRubric] = useState(rubricContent || '');
   return (
     <div className="modal-overlay">
       <div className="rubric-modal">
@@ -34,12 +36,12 @@ const RubricModal = ({
 3. Application of Hoffman & Zhao's Guidance | Demonstrates a strong understanding of Hoffman & Zhao's advice and critically evaluates the proposal in light of it. | Applies Hoffman & Zhao's framework with moderate critical evaluation. | Mentions Hoffman & Zhao's advice but applies it superficially. | Minimal engagement with Hoffman & Zhao; weak application. | No mention or application of Hoffman & Zhao's work.
 4. Integration with Broader HRI Context | Effectively situates the proposal within the broader HRI field; shows awareness of relevance and implications. | Provides a clear link between the proposal and the HRI field. | Makes general statements about the proposal's relevance to HRI. | Vague or minimal connection to broader HRI context. | No mention of the broader HRI field.
 5. Clarity and Structure | Writing is clear, well-organized, and free from errors; arguments flow logically. | Generally clear and well-structured, with minor issues in flow or clarity. | Understandable but may lack coherence or have several writing issues. | Disorganized or unclear writing that hinders understanding. | Poorly written with little structure or clarity.`;
-            setRubricContent(exampleRubric);
+            setLocalRubric(exampleRubric);
           }}>Click here to see an example rubric</p>
-          <textarea 
-            className="rubric-textarea"
-            value={rubricContent}
-            onChange={(e) => setRubricContent(e.target.value)}
+          <textarea
+            className="rubric-input"
+            value={localRubric}
+            onChange={e => setLocalRubric(e.target.value)}
             placeholder="Paste your rubric here..."
             rows={10}
           />
@@ -53,7 +55,8 @@ const RubricModal = ({
             <button 
               className="save-button"
               onClick={() => {
-                if (rubricContent.trim() !== '') {
+                if (localRubric.trim() !== '') {
+                  setRubricContent(localRubric);
                   setShowRubricModal(false);
                   // Save the rubric content
                   // Reset any previous grading session

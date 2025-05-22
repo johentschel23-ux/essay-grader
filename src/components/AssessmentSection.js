@@ -116,26 +116,10 @@ const AssessmentSection = ({
         </div>
       ) : (
         <>
-          {assessmentType === 'bullets' && Array.isArray(currentAssessment.justification) ? (
-            <ul className="justification-list">
-              {currentAssessment.justification.map((item, idx) => {
-                const isHovered = hoveredAssessmentIndexes && hoveredAssessmentIndexes.includes(idx);
-                return (
-                  <li
-                    key={idx}
-                    className={isHovered ? 'assessment-highlight' : ''}
-                    onMouseEnter={() => setHoveredAssessmentIndexes([idx])}
-                    onMouseLeave={() => setHoveredAssessmentIndexes([])}
-                  >
-                    {item}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
+          {currentAssessment.revisedAssessmentText ? (
             <p className="justification">{
-              typeof currentAssessment.justification === 'string'
-                ? (currentAssessment.justification.match(/[^.!?]+[.!?]+/g) || [currentAssessment.justification]).map((sentence, idx) => (
+              typeof currentAssessment.revisedAssessmentText === 'string'
+                ? (currentAssessment.revisedAssessmentText.match(/[^.!?]+[.!?]+/g) || [currentAssessment.revisedAssessmentText]).map((sentence, idx) => (
                     <span
                       key={idx}
                       className={hoveredAssessmentIndexes && hoveredAssessmentIndexes.includes(idx) ? 'assessment-highlight' : ''}
@@ -145,8 +129,41 @@ const AssessmentSection = ({
                       {sentence + ' '}
                     </span>
                   ))
-                : currentAssessment.justification
+                : currentAssessment.revisedAssessmentText
             }</p>
+          ) : (
+            assessmentType === 'bullets' && Array.isArray(currentAssessment.justification) ? (
+              <ul className="justification-list">
+                {currentAssessment.justification.map((item, idx) => {
+                  const isHovered = hoveredAssessmentIndexes && hoveredAssessmentIndexes.includes(idx);
+                  return (
+                    <li
+                      key={idx}
+                      className={isHovered ? 'assessment-highlight' : ''}
+                      onMouseEnter={() => setHoveredAssessmentIndexes([idx])}
+                      onMouseLeave={() => setHoveredAssessmentIndexes([])}
+                    >
+                      {item}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="justification">{
+                typeof currentAssessment.justification === 'string'
+                  ? (currentAssessment.justification.match(/[^.!?]+[.!?]+/g) || [currentAssessment.justification]).map((sentence, idx) => (
+                      <span
+                        key={idx}
+                        className={hoveredAssessmentIndexes && hoveredAssessmentIndexes.includes(idx) ? 'assessment-highlight' : ''}
+                        onMouseEnter={() => setHoveredAssessmentIndexes([idx])}
+                        onMouseLeave={() => setHoveredAssessmentIndexes([])}
+                      >
+                        {sentence + ' '}
+                      </span>
+                    ))
+                  : currentAssessment.justification
+              }</p>
+            )
           )}
         </>
       )}

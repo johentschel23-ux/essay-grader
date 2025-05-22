@@ -29,7 +29,8 @@ const InteractiveGrading = ({
   essayContent, // <-- add essayContent as a prop
   gradeCurrentCriterion, // <-- make sure this is passed as a prop
   setGradingComplete, // <-- add this prop
-  assessmentType // <-- NEW: pass assessmentType as a prop
+  assessmentType, // <-- NEW: pass assessmentType as a prop
+  contextId // <-- pass contextId for context caching
 }) => {
   // --- Handler to ensure last criterion is graded before finishing ---
   const handleFinishGrading = async () => {
@@ -38,9 +39,10 @@ const InteractiveGrading = ({
       await gradeCurrentCriterion(rubricCriteria, lastIndex);
     }
     await finishGrading();
-    // Now that all grading and assessment is done, mark grading as complete
+    // Always mark grading as complete after finishing, regardless of assessment state
     if (typeof setGradingComplete === 'function') {
       setGradingComplete(true);
+      console.log('[handleFinishGrading] gradingComplete set to true');
     }
   };
 
@@ -68,7 +70,7 @@ const InteractiveGrading = ({
   }, [currentCriterionIndex, criteriaAssessments, assessmentType]);
 
   const [isRevisingScore, setIsRevisingScore] = React.useState(false);
-  const [revisionRationale, setRevisionRationale] = React.useState('');
+
 
   const handleSaveJustification = async () => {
   const now = () => new Date().toISOString();
@@ -82,12 +84,14 @@ const InteractiveGrading = ({
   const wasEdited = JSON.stringify(newJustification) !== JSON.stringify(currentAssessment.justification);
   let updatedAssessment = { ...currentAssessment, justification: newJustification, essayContent: essayContent };
   setEditingJustification(false);
-  setRevisionRationale('');
+  
 
   // Save the old score for visualization
-  updatedAssessment.originalAiScore = currentAssessment.aiScore;
-
   if (wasEdited) {
+    updatedAssessment.originalAiScore = currentAssessment.aiScore;
+    updatedAssessment.revisedAssessmentText = newJustification;
+    updatedAssessment.justification = currentAssessment.justification;
+
     setIsRevisingScore(true);
     try {
       console.log(`[${now()}] [handleSaveJustification] Calling LLM for revised score...`, {
@@ -97,21 +101,13 @@ const InteractiveGrading = ({
         editedJustification,
         originalScore: currentAssessment.aiScore
       });
-      const { revisedScore, rationale } = await (window.geminiService
-        ? window.geminiService.reviseCriterionScoreWithJustification(
-            essayContent || '',
-            currentAssessment,
-            currentAssessment.justification || '',
-            editedJustification,
-            currentAssessment.aiScore
-          )
-        : require('../services/geminiService').reviseCriterionScoreWithJustification(
-            essayContent || '',
-            currentAssessment,
-            currentAssessment.justification || '',
-            editedJustification,
-            currentAssessment.aiScore
-          ));
+      const { revisedScore, rationale } = await require('../services/geminiService').reviseCriterionScoreWithJustification(
+        essayContent || '',
+        currentAssessment,
+        currentAssessment.justification || '',
+        editedJustification,
+        currentAssessment.aiScore
+      );
       console.log(`[${now()}] [handleSaveJustification] LLM response:`, { revisedScore, rationale });
       updatedAssessment = {
         ...updatedAssessment,
@@ -119,10 +115,10 @@ const InteractiveGrading = ({
         revisionRationale: rationale,
         essayContent: essayContent
       };
-      setRevisionRationale(rationale);
+      
       console.log(`[${now()}] [handleSaveJustification] updatedAssessment after LLM:`, updatedAssessment);
     } catch (error) {
-      setRevisionRationale('There was an error revising the score. The original score is retained.');
+      
       console.error(`[${now()}] [handleSaveJustification] Error during LLM call:`, error);
     } finally {
       setIsRevisingScore(false);

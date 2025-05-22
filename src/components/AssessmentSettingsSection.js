@@ -21,7 +21,7 @@ const AssessmentSettingsSection = ({
             className={`icon-select-btn${assessmentType === 'flow' ? ' selected' : ''}`}
             role="button"
             tabIndex={0}
-            aria-checked={assessmentType === 'flow'}
+
             aria-label="Flow Text"
             onClick={() => setAssessmentType('flow')}
             onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setAssessmentType('flow')}
@@ -33,7 +33,7 @@ const AssessmentSettingsSection = ({
             className={`icon-select-btn${assessmentType === 'bullets' ? ' selected' : ''}`}
             role="button"
             tabIndex={0}
-            aria-checked={assessmentType === 'bullets'}
+
             aria-label="Bullet Points"
             onClick={() => setAssessmentType('bullets')}
             onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setAssessmentType('bullets')}
@@ -50,7 +50,7 @@ const AssessmentSettingsSection = ({
             className={`icon-select-btn${assessmentLength === 'long' ? ' selected' : ''}`}
             role="button"
             tabIndex={0}
-            aria-checked={assessmentLength === 'long'}
+
             aria-label="Long"
             onClick={() => setAssessmentLength('long')}
             onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setAssessmentLength('long')}
@@ -62,7 +62,7 @@ const AssessmentSettingsSection = ({
             className={`icon-select-btn${assessmentLength === 'medium' ? ' selected' : ''}`}
             role="button"
             tabIndex={0}
-            aria-checked={assessmentLength === 'medium'}
+
             aria-label="Medium"
             onClick={() => setAssessmentLength('medium')}
             onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setAssessmentLength('medium')}
@@ -74,7 +74,7 @@ const AssessmentSettingsSection = ({
             className={`icon-select-btn${assessmentLength === 'short' ? ' selected' : ''}`}
             role="button"
             tabIndex={0}
-            aria-checked={assessmentLength === 'short'}
+
             aria-label="Short"
             onClick={() => setAssessmentLength('short')}
             onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setAssessmentLength('short')}

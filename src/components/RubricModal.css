@@ -1,3 +1,78 @@
 @import './Chat.css';
 
 /* You may override or extend styles specific to RubricModal here if needed */
+
+.rubric-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 200px;
+  margin-bottom: 16px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.rubric-input:focus {
+  outline: none;
+  border-color: #4285f4;
+  box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.15);
+}
+
+.styled-error {
+  background: #ffeaea;
+  color: #b00020;
+  border: 1.5px solid #ffb4b4;
+  border-radius: 10px;
+  padding: 22px 24px 16px 24px;
+  margin: 22px 0 12px 0;
+  box-shadow: 0 2px 12px rgba(176,0,32,0.08), 0 1.5px 4px rgba(0,0,0,0.03);
+  font-size: 1.09em;
+  animation: fadeInRubricError 0.35s cubic-bezier(.4,0,.2,1);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+@keyframes fadeInRubricError {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.rubric-error-message {
+  font-weight: 700;
+  margin-bottom: 13px;
+  font-size: 1.13em;
+  letter-spacing: 0.01em;
+}
+.rubric-error-actions {
+  margin-bottom: 10px;
+}
+.rubric-revise-btn {
+  background: linear-gradient(90deg, #b00020 60%, #ff1744 100%);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 8px 26px;
+  font-weight: 700;
+  font-size: 1.06em;
+  cursor: pointer;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.13s;
+  margin-right: 8px;
+  box-shadow: 0 2px 8px rgba(176,0,32,0.08);
+  outline: none;
+}
+.rubric-revise-btn:hover, .rubric-revise-btn:focus {
+  background: linear-gradient(90deg, #d32f2f 60%, #ff5252 100%);
+  box-shadow: 0 4px 16px rgba(176,0,32,0.13);
+  transform: translateY(-1px) scale(1.03);
+}
+.rubric-error-hint {
+  font-size: 0.99em;
+  color: #b00020;
+  margin-top: 4px;
+  opacity: 0.88;
+  font-style: italic;
+  letter-spacing: 0.01em;
+}

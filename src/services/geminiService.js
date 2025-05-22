@@ -1,71 +1,8 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI, createUserContent } from '@google/genai';
 import geminiConfig from '../config/gemini.js';
 
-// Initialize the Gemini API client
-const genAI = new GoogleGenerativeAI(geminiConfig.apiKey);
-
-/**
- * Get a response from the Gemini API
- * @param {string} prompt - The prompt to send to the API
- * @param {object} options - Optional configuration overrides
- * @returns {Promise<string>} - The generated response
- * @throws {Error} - Throws an error if the API call fails with specific error types
- */
-export const getGeminiResponse = async (prompt, options = {}) => {
-  try {
-    // If no API key is provided, return an error message
-    if (!geminiConfig.apiKey) {
-      console.error('Gemini API key is not set. Please set the REACT_APP_GEMINI_API_KEY environment variable.');
-      throw new Error('API key not configured. Please set up your Gemini API key.');
-    }
-
-    // Truncate very long prompts to avoid excessive token usage
-    // Gemini 2.0 Flash has a larger context window, so we can use a higher limit
-    const maxPromptLength = options.maxPromptLength || 20000; // Default to 20k chars for 2.0 Flash
-    const truncatedPrompt = prompt.length > maxPromptLength ? 
-      prompt.substring(0, maxPromptLength) + '... [Content truncated to reduce token usage]' : 
-      prompt;
-
-    // Log the prompt being sent to the LLM
-    console.log('===== SENDING PROMPT TO LLM =====');
-    console.log(truncatedPrompt);
-    console.log('=================================');
-
-    // Get the model
-    const model = genAI.getGenerativeModel({
-      model: options.model || geminiConfig.model,
-      generationConfig: {
-        ...geminiConfig.generationConfig,
-        ...options.generationConfig
-      }
-    });
-
-    // Generate content
-    const result = await model.generateContent(truncatedPrompt);
-    const response = result.response;
-    const responseText = response.text();
-    
-    // Log the response from the LLM
-    console.log('===== LLM RESPONSE =====');
-    console.log(responseText);
-    console.log('========================');
-    
-    return responseText;
-  } catch (error) {
-    console.error('Error calling Gemini API:', error);
-    
-    // Handle specific error types
-    if (error.message && error.message.includes('RESOURCE_EXHAUSTED')) {
-      throw new Error('API quota exceeded. Your Google Gemini API quota has been reached. Please try again later or upgrade your API plan.');
-    } else if (error.message && error.message.includes('PERMISSION_DENIED')) {
-      throw new Error('API access denied. Please check your API key and permissions.');
-    } else if (error.message && error.message.includes('INVALID_ARGUMENT')) {
-      throw new Error('Invalid request. The prompt may be too long or contain invalid content.');
-    } else {
-      throw new Error(`Error calling Gemini API: ${error.message}`);
-    }
-  }
-};
+// Initialize the Gemini API client (new SDK)
+const ai = new GoogleGenAI({ apiKey: geminiConfig.apiKey });
 
 /**
  * Extract criteria from a rubric
@@ -74,6 +11,8 @@ export const getGeminiResponse = async (prompt, options = {}) => {
  */
 export const extractRubricCriteria = async (rubricContent) => {
   const prompt = `
+    If the provided text is not a grading rubric, or you are not confident you can extract meaningful criteria, respond with the string: NO_VALID_RUBRIC (no JSON, no explanation).
+
     Analyze the following grading rubric and extract each criterion.
     For each criterion, identify:
     1. The name/title of the criterion
@@ -97,7 +36,7 @@ export const extractRubricCriteria = async (rubricContent) => {
     DO NOT include any explanatory text before or after the JSON array.
     ONLY return the JSON array and nothing else.
   `;
-  
+  console.log(prompt);
   const mergedOptions = {
     generationConfig: {
       temperature: 0.1,
@@ -106,10 +45,20 @@ export const extractRubricCriteria = async (rubricContent) => {
   };
   
   try {
-    const response = await getGeminiResponse(prompt, mergedOptions);
-    
+    const response = await ai.models.generateContent({
+      model: geminiConfig.model,
+      contents: [createUserContent([prompt])],
+      generationConfig: mergedOptions.generationConfig
+    });    
     // Clean up the response to ensure it's valid JSON
-    let cleanedResponse = response.trim();
+    let cleanedResponse = response.text.trim();
+
+    console.log(cleanedResponse);
+
+    // Handle explicit NO_VALID_RUBRIC response
+    if (cleanedResponse.toUpperCase() === 'NO_VALID_RUBRIC') {
+      throw new Error('Could not extract rubric. Please check your rubric format.');
+    }
     
     // Remove any markdown code block markers
     cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
@@ -130,14 +79,44 @@ export const extractRubricCriteria = async (rubricContent) => {
   }
 };
 
+// Only keep the fetch-based uploadContextDump implementation (context caching)
+/**
+ * Upload a context dump to Gemini's context caching endpoint.
+ * @param {Array<{title: string, content: string}>} contextList - The context elements to cache
+ * @returns {Promise<string>} - The context ID to use in subsequent prompts
+ */
+export const uploadContextDump = async (contextList) => {
+  // Use the Gemini SDK to upload context and create a cache
+  try {
+    // Convert each context item to a Content object for the cache
+    const contents = contextList.map(item =>
+      createUserContent([{ text: `${item.title}\n${item.content}` }])
+    );
+    const cache = await ai.caches.create({
+      model: geminiConfig.model,
+      config: {
+        contents: contents,
+        systemInstruction: 'You are an expert essay grading assistant. Use the provided context for all subsequent requests.'
+      },
+    });
+    return cache.name; // This is the contextId to use in subsequent prompts
+  } catch (err) {
+    console.error('Error uploading context to Gemini:', err);
+    throw err;
+  }
+};
+
+
 /**
  * Grade a single criterion from a rubric
  * @param {string} essayContent - The content of the essay
  * @param {object} criterion - The criterion object
  * @param {object} options - Optional configuration overrides
+ * @param {string} contextId - The context ID
+ * @param {Array} contextList - The context list
  * @returns {Promise<object>} - The assessment for this criterion
  */
-export const gradeSingleCriterion = async (essayContent, criterion, options = {}) => {
+export const gradeSingleCriterion = async (essayContent, criterion, options = {}, contextId, contextList) => {
   // Settings for assessment format and length
   const assessmentType = options.assessmentType || 'flow';
   const assessmentLength = options.assessmentLength || 'long';
@@ -153,7 +132,8 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
   }
 
   // New instructions to relate evidence to justification
-  const relateInstruction = `\nFor each evidence quote, indicate which sentences or bullet points from your justification it supports. Return the indexes (starting from 0) as a field \"relatedAssessmentIndexes\" in each evidence object. If the justification is a paragraph, treat each sentence as a unit (split on periods, exclamation marks, or question marks). If it's a list, use each bullet as a unit.`;
+  const relateInstruction = `
+For each evidence quote, indicate which sentences or bullet points from your justification it supports. Return the indexes (starting from 0) as a field "relatedAssessmentIndexes" in each evidence object. If the justification is a paragraph, treat each sentence as a unit (split on periods, exclamation marks, or question marks). If it's a list, use each bullet as a unit.`;
 
   let lengthInstruction = '';
   if (assessmentLength === 'short') {
@@ -164,7 +144,16 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
     lengthInstruction = 'Be detailed and extended.';
   }
 
+  // Inject context at the top of the prompt
+  let contextBlock = '';
+  if (contextId) {
+    contextBlock = `CONTEXT_REF: ${contextId}\n`;
+  } else if (contextList && contextList.length > 0) {
+    contextBlock = 'CONTEXT DUMP:\n' + contextList.map(ctx => `- ${ctx.title}: ${ctx.content}`).join('\n') + '\n';
+  }
+
   const prompt = `
+    ${contextBlock}
     You are an expert essay grader. Grade the following essay based on a single criterion from a rubric.
     
     CRITERION: ${criterion.name}
@@ -207,14 +196,18 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
   };
   
   try {
-    const response = await getGeminiResponse(prompt, mergedOptions);
-    
+    const response = await ai.models.generateContent({
+      model: geminiConfig.model,
+      contents: [createUserContent([prompt])],
+      generationConfig: mergedOptions.generationConfig
+    });    
     // Clean up the response to ensure it's valid JSON
-    let cleanedResponse = response.trim();
+    let cleanedResponse = response.text.trim();
     
     // Remove any markdown code block markers
     cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
     cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
+    console.log(cleanedResponse);
     
     // Remove any text before the first { and after the last }
     const firstBrace = cleanedResponse.indexOf('{');
@@ -243,28 +236,11 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
  * @returns {Promise<object>} - The overall assessment
  */
 export const generateOverallAssessment = async (essayContent, criteriaWithScores, options = {}) => {
-  // Settings for assessment format and length
-  const assessmentType = options.assessmentType || 'flow';
-  const assessmentLength = options.assessmentLength || 'long';
-
-  let strengthsInstruction = '';
-  let improvementsInstruction = '';
-  if (assessmentType === 'bullets') {
-    strengthsInstruction = 'Present strengths as bullet points.';
-    improvementsInstruction = 'Present areas for improvement as bullet points.';
-  } else {
-    strengthsInstruction = 'Present strengths as a coherent paragraph.';
-    improvementsInstruction = 'Present areas for improvement as a coherent paragraph.';
-  }
-
-  let lengthInstruction = '';
-  if (assessmentLength === 'short') {
-    lengthInstruction = 'Be concise and brief.';
-  } else if (assessmentLength === 'medium') {
-    lengthInstruction = 'Be balanced in detail and length.';
-  } else {
-    lengthInstruction = 'Be detailed and extended.';
-  }
+  // Always use paragraph format and default length for overall assessment
+  const strengthsInstruction = 'Present strengths as a coherent paragraph.';
+  const improvementsInstruction = 'Present areas for improvement as a coherent paragraph.';
+  // No length instruction needed for overall assessment
+  const lengthInstruction = '';
 
   const criteriaText = criteriaWithScores.map(c => 
     `${c.name}: Score ${c.teacherScore || c.aiScore} out of ${c.scoreRange.max}`
@@ -303,46 +279,25 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
   };
   
   try {
-    const response = await getGeminiResponse(prompt, mergedOptions);
+    const response = await ai.models.generateContent({
+      model: geminiConfig.model,
+      contents: [createUserContent([prompt])],
+      generationConfig: mergedOptions.generationConfig
+    });
+    console.log('===== LLM RAW RESPONSE (generateOverallAssessment) =====');
+    console.log(response.text.trim());
+    console.log('===================================================');
+    let cleanedResponse = response.text.trim();
+    // Remove markdown code block markers if present
+    cleanedResponse = cleanedResponse.replace(/^```json|^```js|^```javascript|^```/gi, '');
+    cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
+    const firstBrace = cleanedResponse.indexOf('{');
+    const lastBrace = cleanedResponse.lastIndexOf('}');
     
-    try {
-      let cleanedResponse = response.trim();
-      // Remove markdown code block markers if present
-      cleanedResponse = cleanedResponse.replace(/^```json|^```js|^```javascript|^```/gi, '');
-      cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
-      const firstBrace = cleanedResponse.indexOf('{');
-      const lastBrace = cleanedResponse.lastIndexOf('}');
-      
-      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-        cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
-      }
-      let assessment = JSON.parse(cleanedResponse);
-
-      // --- Enforce local final grade calculation on a 10-point scale ---
-      // Use teacherScore if available, otherwise aiScore
-      const scores = criteriaWithScores.map(c => {
-        let score = c.teacherScore != null ? Number(c.teacherScore) : Number(c.aiScore);
-        let max = c.scoreRange && c.scoreRange.max ? Number(c.scoreRange.max) : 5;
-        // Default to 5 if not specified
-        return {score, max};
-      }).filter(s => !isNaN(s.score) && !isNaN(s.max) && s.max > 0);
-      if (scores.length > 0) {
-        const avgRatio = scores.reduce((sum, s) => sum + (s.score / s.max), 0) / scores.length;
-        const finalGrade10 = Math.round(avgRatio * 10 * 100) / 100; // round to 2 decimals
-        assessment.overallGrade = finalGrade10;
-      } else {
-        assessment.overallGrade = "N/A";
-      }
-      return assessment;
-    } catch (error) {
-      console.error('Error generating overall assessment:', error);
-      return {
-        strengths: "There was an error generating the overall assessment.",
-        improvements: "Please review the individual criteria scores.",
-        overallGrade: "N/A",
-        advice: "Consider reviewing each criterion individually."
-      };
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
     }
+    return JSON.parse(cleanedResponse);
   } catch (error) {
     console.error('Error generating overall assessment:', error);
     return {
@@ -411,8 +366,16 @@ export const reviseCriterionScoreWithJustification = async (
   };
 
   try {
-    const response = await getGeminiResponse(prompt, mergedOptions);
-    let cleanedResponse = response.trim();
+    // Use the new SDK directly for revising criterion score
+    const response = await ai.models.generateContent({
+      model: geminiConfig.model,
+      contents: [createUserContent([prompt])],
+      generationConfig: mergedOptions.generationConfig
+    });
+    let cleanedResponse = response.text.trim();
+    console.log('===== LLM RAW RESPONSE (reviseCriterionScoreWithJustification) =====');
+    console.log(cleanedResponse);
+    console.log('====================================================');
     cleanedResponse = cleanedResponse.replace(/```json\s*/g, '');
     cleanedResponse = cleanedResponse.replace(/```\s*$/g, '');
     const firstBrace = cleanedResponse.indexOf('{');
@@ -420,7 +383,11 @@ export const reviseCriterionScoreWithJustification = async (
     if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
       cleanedResponse = cleanedResponse.substring(firstBrace, lastBrace + 1);
     }
-    return JSON.parse(cleanedResponse);
+    const parsed = JSON.parse(cleanedResponse);
+    console.log('===== LLM PARSED RESPONSE (reviseCriterionScoreWithJustification) =====');
+    console.log(parsed);
+    console.log('=======================================================');
+    return parsed;
   } catch (error) {
     console.error('Error revising criterion score:', error);
     return {
@@ -430,14 +397,13 @@ export const reviseCriterionScoreWithJustification = async (
   }
 };
 
-// Create a named export object
 const geminiService = {
-  getGeminiResponse,
-
   extractRubricCriteria,
   gradeSingleCriterion,
   generateOverallAssessment,
-  reviseCriterionScoreWithJustification
+  reviseCriterionScoreWithJustification,
+  uploadContextDump
 };
 
 export default geminiService;
+// (Removed duplicate export of uploadContextDump to resolve redeclaration error)

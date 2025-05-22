@@ -13,13 +13,12 @@ function App() {
   const [appTitle] = useState('Interactive Rubric Grader');
 
   // Handle file onChange event
-  const allowedFiles = ['application/pdf'];
   const handleFile = (e) => {
     let selectedFile = e.target.files[0];
     if (selectedFile) {
-      if (allowedFiles.includes(selectedFile.type)) {
+      const isPdf = selectedFile.type === 'application/pdf' || selectedFile.name.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
         setPdfError('');
-        
         // Also keep the data URL for compatibility
         let reader = new FileReader();
         reader.readAsDataURL(selectedFile);
@@ -44,6 +43,7 @@ function App() {
           <label className="upload-button">
             <input
               type="file"
+              accept="application/pdf"
               onChange={handleFile}
               style={{ display: 'none' }}
             />

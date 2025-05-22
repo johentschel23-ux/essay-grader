@@ -33,20 +33,6 @@ const EvidenceSection = ({
           {Array.isArray(currentAssessment.evidence) && currentAssessment.evidence.length > 0 ? (
             currentAssessment.evidence.map((item, index) => {
               const quote = item.highlight || item.quote || 'No quote available';
-              // Prepare assessment sentences/bullets
-              let assessmentParts = [];
-              if (Array.isArray(currentAssessment.justification)) {
-                assessmentParts = currentAssessment.justification;
-              } else if (typeof currentAssessment.justification === 'string') {
-                assessmentParts = currentAssessment.justification.match(/[^.!?]+[.!?]+/g) || [currentAssessment.justification];
-              }
-              // Find related assessment parts
-              let related = [];
-              if (Array.isArray(item.relatedAssessmentIndexes)) {
-                related = item.relatedAssessmentIndexes
-                  .map(idx => assessmentParts[idx])
-                  .filter(Boolean);
-              }
               const isEvidenceHovered = hoveredEvidenceIndex === index;
               return (
                 <div
