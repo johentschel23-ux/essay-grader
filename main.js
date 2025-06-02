@@ -111,9 +111,19 @@ function registerLocalResourceProtocol() {
 
 function createWindow() {
   // Create the browser window
+  // Set app icon based on platform (use assets/icon.ico for Windows/Linux, assets/icon.icns for Mac)
+  let iconPath = null;
+  if (process.platform === 'darwin') {
+    iconPath = path.join(__dirname, 'assets', 'icon.icns');
+  } else {
+    iconPath = path.join(__dirname, 'assets', 'icon.ico');
+  }
+
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
+    fullscreen: true,
+    icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -128,6 +138,10 @@ function createWindow() {
   console.log('ELECTRON VERSION:', process.versions.electron);
   console.log('NODE VERSION:', process.versions.node);
   console.log('CHROME VERSION:', process.versions.chrome);
+  
+  // Ensure the window is maximized and in fullscreen
+  win.maximize();
+  win.setFullScreen(true);
   
   // Check if we're in development or production
   const isDev = process.env.NODE_ENV === 'development';

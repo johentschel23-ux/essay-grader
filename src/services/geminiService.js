@@ -9,7 +9,7 @@ const ai = new GoogleGenAI({ apiKey: geminiConfig.apiKey });
  * @param {string} rubricContent - The rubric content
  * @returns {Promise<Array>} - Array of criteria objects
  */
-export const extractRubricCriteria = async (rubricContent) => {
+export const extractRubricCriteria = async (rubricContent, modelOverride = null) => {
   const prompt = `
     If the provided text is not a grading rubric, or you are not confident you can extract meaningful criteria, respond with the string: NO_VALID_RUBRIC (no JSON, no explanation).
 
@@ -57,7 +57,7 @@ export const extractRubricCriteria = async (rubricContent) => {
 
     // Handle explicit NO_VALID_RUBRIC response
     if (cleanedResponse.toUpperCase() === 'NO_VALID_RUBRIC') {
-      throw new Error('Could not extract rubric. Please check your rubric format.');
+      return 'NO_VALID_RUBRIC';
     }
     
     // Remove any markdown code block markers
@@ -74,8 +74,19 @@ export const extractRubricCriteria = async (rubricContent) => {
     
     return JSON.parse(cleanedResponse);
   } catch (error) {
+    // If we get a 503 (model overloaded), try fallback model if not already using it
+    const is503 = error && error.message && /503|overloaded|UNAVAILABLE/i.test(error.message);
+    if (is503 && (!modelOverride || modelOverride === geminiConfig.model)) {
+      try {
+        // Fallback to gemini-1.5-flash
+        return await extractRubricCriteria(rubricContent, 'gemini-1.5-flash');
+      } catch (fallbackError) {
+        // If fallback also fails, throw a special error
+        throw new Error('MODEL_OVERLOADED');
+      }
+    }
     console.error('Error extracting rubric criteria:', error);
-    throw new Error('Failed to parse rubric. Please check the format and try again.');
+    throw error;
   }
 };
 
@@ -85,24 +96,33 @@ export const extractRubricCriteria = async (rubricContent) => {
  * @param {Array<{title: string, content: string}>} contextList - The context elements to cache
  * @returns {Promise<string>} - The context ID to use in subsequent prompts
  */
-export const uploadContextDump = async (contextList) => {
+export const uploadContextDump = async (contextList, modelOverride = null) => {
   // Use the Gemini SDK to upload context and create a cache
   try {
     // Convert each context item to a Content object for the cache
     const contents = contextList.map(item =>
       createUserContent([{ text: `${item.title}\n${item.content}` }])
     );
+    const modelToUse = modelOverride || geminiConfig.model;
     const cache = await ai.caches.create({
-      model: geminiConfig.model,
+      model: modelToUse,
       config: {
         contents: contents,
         systemInstruction: 'You are an expert essay grading assistant. Use the provided context for all subsequent requests.'
       },
     });
     return cache.name; // This is the contextId to use in subsequent prompts
-  } catch (err) {
-    console.error('Error uploading context to Gemini:', err);
-    throw err;
+  } catch (error) {
+    const is503 = error && error.message && /503|overloaded|UNAVAILABLE/i.test(error.message);
+    if (is503 && (!modelOverride || modelOverride === geminiConfig.model)) {
+      try {
+        return await uploadContextDump(contextList, 'gemini-1.5-flash');
+      } catch (fallbackError) {
+        throw new Error('MODEL_OVERLOADED');
+      }
+    }
+    console.error('Error uploading context to Gemini:', error);
+    throw error;
   }
 };
 
@@ -116,7 +136,7 @@ export const uploadContextDump = async (contextList) => {
  * @param {Array} contextList - The context list
  * @returns {Promise<object>} - The assessment for this criterion
  */
-export const gradeSingleCriterion = async (essayContent, criterion, options = {}, contextId, contextList) => {
+export const gradeSingleCriterion = async (essayContent, criterion, options = {}, contextId, contextList, modelOverride = null) => {
   // Settings for assessment format and length
   const assessmentType = options.assessmentType || 'flow';
   const assessmentLength = options.assessmentLength || 'long';
@@ -219,6 +239,19 @@ For each evidence quote, indicate which sentences or bullet points from your jus
     
     return JSON.parse(cleanedResponse);
   } catch (error) {
+    const is503 = error && error.message && /503|overloaded|UNAVAILABLE/i.test(error.message);
+    if (is503 && (!modelOverride || modelOverride === geminiConfig.model)) {
+      try {
+        return await gradeSingleCriterion(essayContent, criterion, options, contextId, contextList, 'gemini-1.5-flash');
+      } catch (fallbackError) {
+        return {
+          justification: "The Gemini API is overloaded. Please try again in a few minutes.",
+          evidence: [],
+          score: null,
+          error: 'MODEL_OVERLOADED'
+        };
+      }
+    }
     console.error('Error grading criterion:', error);
     return {
       justification: "There was an error processing this criterion. Please try again.",
@@ -235,7 +268,7 @@ For each evidence quote, indicate which sentences or bullet points from your jus
  * @param {object} options - Optional configuration overrides
  * @returns {Promise<object>} - The overall assessment
  */
-export const generateOverallAssessment = async (essayContent, criteriaWithScores, options = {}) => {
+export const generateOverallAssessment = async (essayContent, criteriaWithScores, options = {}, modelOverride = null) => {
   // Always use paragraph format and default length for overall assessment
   const strengthsInstruction = 'Present strengths as a coherent paragraph.';
   const improvementsInstruction = 'Present areas for improvement as a coherent paragraph.';
@@ -299,6 +332,20 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
     }
     return JSON.parse(cleanedResponse);
   } catch (error) {
+    const is503 = error && error.message && /503|overloaded|UNAVAILABLE/i.test(error.message);
+    if (is503 && (!modelOverride || modelOverride === geminiConfig.model)) {
+      try {
+        return await generateOverallAssessment(essayContent, criteriaWithScores, options, 'gemini-1.5-flash');
+      } catch (fallbackError) {
+        return {
+          strengths: "The Gemini API is overloaded. Please try again in a few minutes.",
+          improvements: "Please review the individual criteria scores.",
+          overallGrade: "N/A",
+          advice: "Consider reviewing each criterion individually.",
+          error: 'MODEL_OVERLOADED'
+        };
+      }
+    }
     console.error('Error generating overall assessment:', error);
     return {
       strengths: "There was an error generating the overall assessment.",
@@ -325,7 +372,8 @@ export const reviseCriterionScoreWithJustification = async (
   originalJustification,
   editedJustification,
   originalScore,
-  options = {}
+  options = {},
+  modelOverride = null
 ) => {
   const prompt = `
     You are an expert essay grader. The following is an essay, a rubric criterion, and two versions of the justification for the assessment of this criterion: the original justification (from an AI) and an edited justification (from a human reviewer). The original numerical score was ${originalScore}.
@@ -389,6 +437,26 @@ export const reviseCriterionScoreWithJustification = async (
     console.log('=======================================================');
     return parsed;
   } catch (error) {
+    const is503 = error && error.message && /503|overloaded|UNAVAILABLE/i.test(error.message);
+    if (is503 && (!modelOverride || modelOverride === geminiConfig.model)) {
+      try {
+        return await reviseCriterionScoreWithJustification(
+          essayContent,
+          criterion,
+          originalJustification,
+          editedJustification,
+          originalScore,
+          options,
+          'gemini-1.5-flash'
+        );
+      } catch (fallbackError) {
+        return {
+          revisedScore: originalScore,
+          rationale: 'The Gemini API is overloaded. Please try again in a few minutes.',
+          error: 'MODEL_OVERLOADED'
+        };
+      }
+    }
     console.error('Error revising criterion score:', error);
     return {
       revisedScore: originalScore,

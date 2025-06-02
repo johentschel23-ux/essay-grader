@@ -380,6 +380,38 @@ const Chat = ({ pdfFile }) => {
 
   return (
     <div className="app-container">
+      {/* Restart App Button (top-right corner, always visible) */}
+      <button
+        className="restart-app-btn"
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 32,
+          zIndex: 1000,
+          background: 'linear-gradient(90deg, #b00020 60%, #ff1744 100%)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          padding: '10px 26px',
+          fontWeight: 700,
+          fontSize: '1.08em',
+          boxShadow: '0 2px 8px rgba(176,0,32,0.13)',
+          cursor: 'pointer',
+          transition: 'background 0.18s, box-shadow 0.18s, transform 0.13s',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10
+        }}
+        title="Restart the application (reset all progress)"
+        onClick={() => {
+          if (window.confirm('Are you sure you want to restart? All unsaved progress will be lost.')) {
+            window.location.reload();
+          }
+        }}
+      >
+        <span style={{fontSize: 20, marginRight: 6}}>⟳</span>
+        Restart App
+      </button>
       <div className="rubric-interface-container">
         {/* Main content area */}
         <div className="rubric-main-content">

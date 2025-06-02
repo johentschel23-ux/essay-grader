@@ -55,90 +55,97 @@ const InteractiveGrading = ({
   const [hoveredEvidenceIndex, setHoveredEvidenceIndex] = React.useState(null);
   const [hoveredAssessmentIndexes, setHoveredAssessmentIndexes] = React.useState([]);
 
-  React.useEffect(() => {
-    if (criteriaAssessments.length > 0 && currentCriterionIndex < criteriaAssessments.length) {
-      const justification = criteriaAssessments[currentCriterionIndex].justification || '';
-      if (assessmentType === 'bullets' && Array.isArray(justification)) {
-        setEditedBullets(justification);
-        setEditedJustification('');
-      } else {
-        setEditedJustification(justification);
-        setEditedBullets([]);
-      }
-      setEditingJustification(false);
-    }
-  }, [currentCriterionIndex, criteriaAssessments, assessmentType]);
+  // Only reset editing state when criterion changes or grading restarts
+React.useEffect(() => {
+  setEditingJustification(false);
+}, [currentCriterionIndex, criteriaAssessments.length, assessmentType]);
 
   const [isRevisingScore, setIsRevisingScore] = React.useState(false);
+const [gradingError, setGradingError] = React.useState(null);
 
 
   const handleSaveJustification = async () => {
+  setGradingError(null);
   const now = () => new Date().toISOString();
-  const currentAssessment = criteriaAssessments[currentCriterionIndex];
+  const currentAssessmentObj = criteriaAssessments[currentCriterionIndex];
+  const latestRevision = currentAssessmentObj?.revisions?.length
+    ? currentAssessmentObj.revisions[currentAssessmentObj.revisions.length - 1]
+    : currentAssessmentObj;
   let newJustification;
   if (assessmentType === 'bullets') {
     newJustification = editedBullets.map(b => b.trim()).filter(b => b);
   } else {
     newJustification = editedJustification;
   }
-  const wasEdited = JSON.stringify(newJustification) !== JSON.stringify(currentAssessment.justification);
-  let updatedAssessment = { ...currentAssessment, justification: newJustification, essayContent: essayContent };
+  const wasEdited = JSON.stringify(newJustification) !== JSON.stringify(latestRevision.justification);
+  let updatedRevision = { ...latestRevision, justification: newJustification, essayContent: essayContent };
   setEditingJustification(false);
   
 
   // Save the old score for visualization
   if (wasEdited) {
-    updatedAssessment.originalAiScore = currentAssessment.aiScore;
-    updatedAssessment.revisedAssessmentText = newJustification;
-    updatedAssessment.justification = currentAssessment.justification;
+    updatedRevision.originalAiScore = latestRevision.aiScore;
+    updatedRevision.revisedAssessmentText = newJustification;
+    updatedRevision.justification = latestRevision.justification;
 
     setIsRevisingScore(true);
     try {
       console.log(`[${now()}] [handleSaveJustification] Calling LLM for revised score...`, {
         essayContent,
-        criterion: currentAssessment,
-        originalJustification: currentAssessment.justification || '',
+        criterion: latestRevision,
+        originalJustification: latestRevision.justification || '',
         editedJustification,
-        originalScore: currentAssessment.aiScore
+        originalScore: latestRevision.aiScore
       });
       const { revisedScore, rationale } = await require('../services/geminiService').reviseCriterionScoreWithJustification(
         essayContent || '',
-        currentAssessment,
-        currentAssessment.justification || '',
+        latestRevision,
+        latestRevision.justification || '',
         editedJustification,
-        currentAssessment.aiScore
+        latestRevision.aiScore
       );
       console.log(`[${now()}] [handleSaveJustification] LLM response:`, { revisedScore, rationale });
-      updatedAssessment = {
-        ...updatedAssessment,
+      updatedRevision = {
+        ...updatedRevision,
         aiScore: revisedScore,
         revisionRationale: rationale,
         essayContent: essayContent
       };
       
-      console.log(`[${now()}] [handleSaveJustification] updatedAssessment after LLM:`, updatedAssessment);
+      console.log(`[${now()}] [handleSaveJustification] updatedRevision after LLM:`, updatedRevision);
     } catch (error) {
-      
+      // Enhanced error handling for Gemini API overload
+      if (error && (error.message === 'MODEL_OVERLOADED' || (error.error && error.error === 'MODEL_OVERLOADED'))) {
+        setGradingError('The Gemini API is overloaded. Please try again in a few minutes.');
+      } else if (error && error.error === 'MODEL_OVERLOADED') {
+        setGradingError('The Gemini API is overloaded. Please try again in a few minutes.');
+      } else {
+        setGradingError('There was an error revising the score. The original score is retained.');
+      }
       console.error(`[${now()}] [handleSaveJustification] Error during LLM call:`, error);
     } finally {
       setIsRevisingScore(false);
     }
   }
   // Force a new array/object reference for React state
-  const updatedAssessments = criteriaAssessments.map((assessment, idx) => {
+  const updatedAssessments = criteriaAssessments.map((assessmentObj, idx) => {
     if (idx === currentCriterionIndex) {
       // Defensive: always ensure aiScore is a number and rationale is a string
+      const newRevision = {
+        ...updatedRevision,
+        aiScore: typeof updatedRevision.aiScore === 'number' ? updatedRevision.aiScore : Number(updatedRevision.aiScore),
+        revisionRationale: typeof updatedRevision.revisionRationale === 'string' ? updatedRevision.revisionRationale : (updatedRevision.revisionRationale ? String(updatedRevision.revisionRationale) : '')
+      };
       return {
-        ...updatedAssessment,
-        aiScore: typeof updatedAssessment.aiScore === 'number' ? updatedAssessment.aiScore : Number(updatedAssessment.aiScore),
-        revisionRationale: typeof updatedAssessment.revisionRationale === 'string' ? updatedAssessment.revisionRationale : (updatedAssessment.revisionRationale ? String(updatedAssessment.revisionRationale) : '')
+        ...assessmentObj,
+        revisions: [...(assessmentObj.revisions || [assessmentObj]), newRevision]
       };
     }
     // Also clone the other objects to force a new array reference
-    return { ...assessment };
+    return { ...assessmentObj };
   });
-  console.log(`[${now()}] [handleSaveJustification] updatedAssessments:`, updatedAssessments);
-  setCriteriaAssessments(updatedAssessments);
+console.log(`[${now()}] [handleSaveJustification] updatedAssessments:`, updatedAssessments);
+setCriteriaAssessments(updatedAssessments);
 };
 
 
@@ -175,11 +182,25 @@ const InteractiveGrading = ({
 
   // Always show the current criterion (even for the last one) until gradingComplete is true
   if (rubricCriteria.length > 0 && criteriaAssessments.length > 0 && !gradingComplete) {
-    const currentAssessment = criteriaAssessments[currentCriterionIndex];
+    const currentAssessmentObj = criteriaAssessments[currentCriterionIndex];
+const currentAssessment = currentAssessmentObj?.revisions?.length
+  ? currentAssessmentObj.revisions[currentAssessmentObj.revisions.length - 1]
+  : currentAssessmentObj;
     const criterionId = currentAssessment.id;
 
     return (
       <React.Fragment>
+        {/* Error message for grading (e.g., Gemini API overload) */}
+        {gradingError && (
+          <div className="rubric-parse-error" style={{marginBottom: 18, marginTop: 6, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>
+            <div className="rubric-error-message">{gradingError}</div>
+            <div className="rubric-error-actions">
+              <button className="rubric-revise-btn" onClick={() => setGradingError(null)}>
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
         {/* Overlay loading spinner when moving to next criterion or grading in progress */}
         {isProcessingRubric && criteriaAssessments.length > 0 && (
           <div className="grading-overlay-loading">

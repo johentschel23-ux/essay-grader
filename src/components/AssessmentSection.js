@@ -1,6 +1,7 @@
 import React from 'react';
 import './AssessmentSection.css';
 
+// NOTE: currentAssessment is always the latest revision object for the current criterion.
 const AssessmentSection = ({
   assessmentType,
   currentAssessment,
@@ -29,11 +30,16 @@ const AssessmentSection = ({
         <button
           className="edit-justification-icon-btn"
           onClick={() => {
+            // Always use the latest revision's justification for editing
             if (assessmentType === 'bullets' && Array.isArray(currentAssessment.justification)) {
-              setEditedBullets(currentAssessment.justification);
+              setEditedBullets(Array.isArray(currentAssessment.justification) ? [...currentAssessment.justification] : []);
               setEditedJustification('');
             } else {
-              setEditedJustification(currentAssessment.justification || '');
+              setEditedJustification(
+                typeof currentAssessment.revisedAssessmentText === 'string' && currentAssessment.revisedAssessmentText.trim() !== ''
+                  ? currentAssessment.revisedAssessmentText
+                  : (currentAssessment.justification || '')
+              );
               setEditedBullets([]);
             }
             setEditingJustification(true);

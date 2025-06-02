@@ -37,7 +37,6 @@ const Spinner = () => (
 );
 
 const AdvancedPdfViewer = ({ url }) => {
-  // Minimal PDF viewer: page navigation and zoom only
   const [numPages, setNumPages] = React.useState(null);
   const [pageNumber, setPageNumber] = React.useState(1);
   const [scale, setScale] = React.useState(1.0);

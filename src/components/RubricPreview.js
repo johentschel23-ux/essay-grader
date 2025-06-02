@@ -61,16 +61,26 @@ const RubricPreview = ({ rubricContent, startGrading, onReviseRubric, pdfUploade
       }
       try {
         const parsed = await geminiService.extractRubricCriteria(rubricContent);
-        // Validate structure
-        const validationError = validateCriteria(parsed);
-        if (validationError) {
+        if (parsed === 'NO_VALID_RUBRIC') {
           setCriteria(null);
-          setError(`Rubric error: ${validationError}`);
-        } else if (isMounted) {
-          setCriteria(parsed);
+          setError('No valid rubric detected. Please check your rubric and try again.');
+        } else {
+          // Validate structure
+          const validationError = validateCriteria(parsed);
+          if (validationError) {
+            setCriteria(null);
+            setError(`Rubric error: ${validationError}`);
+          } else if (isMounted) {
+            setCriteria(parsed);
+          }
         }
       } catch (err) {
         setCriteria(null);
+        if (err && err.message === 'MODEL_OVERLOADED') {
+          setError('The Gemini API is overloaded. Please try again in a few minutes.');
+        } else {
+          setError('Failed to extract rubric. Please check your rubric format or try again later.');
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
