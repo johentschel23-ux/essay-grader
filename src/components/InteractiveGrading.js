@@ -51,6 +51,14 @@ const InteractiveGrading = ({
   const [editedJustification, setEditedJustification] = React.useState('');
   const [editedBullets, setEditedBullets] = React.useState([]);
 
+  // Fix off-by-one: Save justification only after state is set
+  React.useEffect(() => {
+    if (editingJustification === 'pending-save') {
+      handleSaveJustification();
+      setEditingJustification(false);
+    }
+  }, [editedJustification, editedBullets, editingJustification]);
+
   // State for interactive highlight on hover
   const [hoveredEvidenceIndex, setHoveredEvidenceIndex] = React.useState(null);
   const [hoveredAssessmentIndexes, setHoveredAssessmentIndexes] = React.useState([]);
@@ -78,16 +86,33 @@ const [gradingError, setGradingError] = React.useState(null);
     newJustification = editedJustification;
   }
   const wasEdited = JSON.stringify(newJustification) !== JSON.stringify(latestRevision.justification);
-  let updatedRevision = { ...latestRevision, justification: newJustification, essayContent: essayContent };
+  // 1. Immediately push a new revision with the updated justification (no new AI score yet)
+  let immediateRevision = {
+    ...latestRevision,
+    justification: newJustification,
+    revisedAssessmentText: newJustification,
+    essayContent: essayContent,
+    // Clear AI score/rationale until LLM returns
+    aiScore: latestRevision.aiScore,
+    revisionRationale: '',
+    originalAiScore: latestRevision.aiScore
+  };
   setEditingJustification(false);
-  
 
-  // Save the old score for visualization
+  // Update UI instantly
+  const updatedAssessmentsImmediate = criteriaAssessments.map((assessmentObj, idx) => {
+    if (idx === currentCriterionIndex) {
+      return {
+        ...assessmentObj,
+        revisions: [...(assessmentObj.revisions || [assessmentObj]), immediateRevision]
+      };
+    }
+    return { ...assessmentObj };
+  });
+  setCriteriaAssessments(updatedAssessmentsImmediate);
+
+  // 2. Then, asynchronously update with revised AI score/rationale
   if (wasEdited) {
-    updatedRevision.originalAiScore = latestRevision.aiScore;
-    updatedRevision.revisedAssessmentText = newJustification;
-    updatedRevision.justification = latestRevision.justification;
-
     setIsRevisingScore(true);
     try {
       console.log(`[${now()}] [handleSaveJustification] Calling LLM for revised score...`, {
@@ -105,14 +130,25 @@ const [gradingError, setGradingError] = React.useState(null);
         latestRevision.aiScore
       );
       console.log(`[${now()}] [handleSaveJustification] LLM response:`, { revisedScore, rationale });
-      updatedRevision = {
-        ...updatedRevision,
-        aiScore: revisedScore,
-        revisionRationale: rationale,
-        essayContent: essayContent
-      };
-      
-      console.log(`[${now()}] [handleSaveJustification] updatedRevision after LLM:`, updatedRevision);
+      // Update the latest revision with the new AI score/rationale
+      const updatedAssessmentsFinal = updatedAssessmentsImmediate.map((assessmentObj, idx) => {
+        if (idx === currentCriterionIndex) {
+          const revs = assessmentObj.revisions || [assessmentObj];
+          const lastIdx = revs.length - 1;
+          const updatedRevs = revs.map((rev, i) => i === lastIdx ? {
+            ...rev,
+            aiScore: revisedScore,
+            revisionRationale: rationale,
+            essayContent: essayContent
+          } : rev);
+          return {
+            ...assessmentObj,
+            revisions: updatedRevs
+          };
+        }
+        return { ...assessmentObj };
+      });
+      setCriteriaAssessments(updatedAssessmentsFinal);
     } catch (error) {
       // Enhanced error handling for Gemini API overload
       if (error && (error.message === 'MODEL_OVERLOADED' || (error.error && error.error === 'MODEL_OVERLOADED'))) {
@@ -127,25 +163,6 @@ const [gradingError, setGradingError] = React.useState(null);
       setIsRevisingScore(false);
     }
   }
-  // Force a new array/object reference for React state
-  const updatedAssessments = criteriaAssessments.map((assessmentObj, idx) => {
-    if (idx === currentCriterionIndex) {
-      // Defensive: always ensure aiScore is a number and rationale is a string
-      const newRevision = {
-        ...updatedRevision,
-        aiScore: typeof updatedRevision.aiScore === 'number' ? updatedRevision.aiScore : Number(updatedRevision.aiScore),
-        revisionRationale: typeof updatedRevision.revisionRationale === 'string' ? updatedRevision.revisionRationale : (updatedRevision.revisionRationale ? String(updatedRevision.revisionRationale) : '')
-      };
-      return {
-        ...assessmentObj,
-        revisions: [...(assessmentObj.revisions || [assessmentObj]), newRevision]
-      };
-    }
-    // Also clone the other objects to force a new array reference
-    return { ...assessmentObj };
-  });
-console.log(`[${now()}] [handleSaveJustification] updatedAssessments:`, updatedAssessments);
-setCriteriaAssessments(updatedAssessments);
 };
 
 
