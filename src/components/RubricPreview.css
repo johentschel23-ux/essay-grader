@@ -91,6 +91,10 @@
   justify-content: center !important;
   text-align: center !important;
   width: 100%;
+  box-sizing: border-box;
+  padding: 18px 12px;
+  word-break: break-word;
+  margin: 0 auto 12px auto;
 }
 
 .rubric-error-message {
@@ -100,7 +104,11 @@
   letter-spacing: 0.01em;
   text-align: center !important;
   width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
   display: block;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .rubric-error-actions {

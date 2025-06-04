@@ -1,3 +1,256 @@
 @import './Chat.css';
 
-/* You may override or extend styles specific to OverallAssessment here if needed */
+/* --- Editable Fields --- */
+.editable-field {
+  width: 8em;
+  min-height: 2.2em;
+  font-size: 1.2em;
+  font-family: inherit;
+  border: 1.5px solid #cfd8dc;
+  border-radius: 8px;
+  padding: 0.4em 0.8em;
+  margin-top: 0.4em;
+  margin-bottom: 0.4em;
+  background: #f8fafc;
+  transition: border 0.2s, box-shadow 0.2s, background 0.2s;
+  box-sizing: border-box;
+  text-align: left;
+}
+.editable-field:focus {
+  outline: none;
+  border: 2px solid #1976d2;
+  background: #e3f2fd;
+  box-shadow: 0 0 0 2px #90caf9;
+}
+
+.editable-textarea {
+  width: 100%;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  padding: 0.7em 1em;
+  border: 1px solid #e0e0e0;
+  border-radius: 7px;
+  font-size: 1.18em;
+  font-family: inherit;
+  background: #f8f9fa;
+  color: #343a40;
+  margin-top: 0.5em;
+  margin-bottom: 0.2em;
+  resize: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.editable-textarea:focus {
+  outline: none;
+  border: 2px solid #1976d2;
+  background: #e3f2fd;
+}
+
+
+
+/* --- Assessment Sections --- */
+.assessment-section {
+  margin-bottom: 1.5em;
+  padding: 1.2em 1.2em 1.1em 1.2em;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px 0 rgba(60,72,100,0.06);
+  display: flex;
+  flex-direction: column;
+  height: 320px;
+  min-height: 320px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+
+.assessment-section > h3 {
+  display: block !important;
+  text-align: left !important;
+  font-weight: 500 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.3em !important;
+  padding: 0 !important;
+  color: #1976d2 !important;
+  font-size: 1.13em !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.2 !important;
+  background: none !important;
+  box-shadow: none !important;
+  align-items: unset !important;
+  justify-content: unset !important;
+  min-height: 0 !important;
+}
+
+.grade-section {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.grade-value-wrapper {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.final-grade {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7em;
+  margin-top: 1em;
+  font-weight: 700;
+  color: #1976d2;
+  background: #f1f8fe;
+  border-radius: 2em;
+  min-width: 2.5em;
+  padding: 0.25em 1.2em;
+  box-shadow: 0 2px 8px 0 rgba(25,118,210,0.08);
+  border: 1.5px solid #90caf9;
+  transition: border 0.2s, box-shadow 0.2s;
+}
+.final-grade.editable-field {
+  border: 1.5px solid #90caf9;
+  background: #f1f8fe;
+  font-size: 2em;
+  font-weight: 700;
+  color: #1976d2;
+  text-align: center;
+  min-width: 2.5em;
+  max-width: 5em;
+  min-height: 1.8em;
+  padding: 0.25em 1.2em;
+  border-radius: 2em;
+  box-shadow: 0 2px 8px 0 rgba(25,118,210,0.08);
+  margin: 0 auto;
+  display: block;
+}
+.final-grade.editable-field:focus {
+  outline: none;
+  border: 2px solid #1976d2;
+  background: #e3f2fd;
+  box-shadow: 0 0 0 2px #90caf9;
+}
+
+/* --- Assessment Actions --- */
+.export-pdf-button {
+  background: linear-gradient(90deg, #43cea2 0%, #185a9d 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7em 1.8em;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px 0 rgba(25,118,210,0.08);
+  transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+  margin-top: 1.5em;
+  margin-bottom: 1em;
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.export-pdf-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.export-pdf-button:hover:not(:disabled) {
+  background: linear-gradient(90deg, #11998e 0%, #1e3c72 100%);
+  box-shadow: 0 4px 16px 0 rgba(25,118,210,0.14);
+}
+.export-pdf-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.assessment-actions {
+  display: flex;
+  gap: 1.2em;
+  justify-content: center;
+  margin-top: 2.2em;
+}
+
+.restart-button {
+  background: linear-gradient(90deg, #1976d2 0%, #64b5f6 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7em 2em;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px 0 rgba(25,118,210,0.08);
+  transition: background 0.15s, box-shadow 0.15s, opacity 0.15s, transform 0.13s;
+}
+.restart-button:hover:not(:disabled), .restart-button:focus {
+  background: linear-gradient(90deg, #1565c0 0%, #42a5f5 100%);
+  box-shadow: 0 4px 16px 0 rgba(25,118,210,0.14);
+  transform: translateY(-2px) scale(1.03);
+}
+.restart-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.close-button {
+  background: linear-gradient(90deg, #b00020 60%, #ff1744 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7em 2em;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px 0 rgba(176,0,32,0.08);
+  transition: background 0.15s, box-shadow 0.15s, opacity 0.15s, transform 0.13s;
+}
+.close-button:hover:not(:disabled), .close-button:focus {
+  background: linear-gradient(90deg, #d32f2f 60%, #ff5252 100%);
+  box-shadow: 0 4px 16px 0 rgba(176,0,32,0.13);
+  transform: translateY(-2px) scale(1.03);
+}
+.close-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.save-button {
+  background: linear-gradient(90deg, #1976d2 0%, #64b5f6 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7em 1.8em;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px 0 rgba(25,118,210,0.08);
+  transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.save-button:hover:not(:disabled) {
+  background: linear-gradient(90deg, #1565c0 0%, #42a5f5 100%);
+  box-shadow: 0 4px 16px 0 rgba(25,118,210,0.14);
+}
+.save-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Responsive tweaks --- */
+@media (max-width: 700px) {
+  .assessment-section {
+    padding: 0.7em;
+  }
+  .assessment-actions {
+    flex-direction: column;
+    gap: 0.7em;
+    align-items: stretch;
+  }
+}

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import PropTypes from 'prop-types'; // Moved to the top
 import 'react-pdf-highlighter/dist/style.css';
@@ -25,16 +25,6 @@ if (typeof window !== 'undefined' && window.electronAPI && typeof window.electro
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrcValue;
 
-// Helper to generate unique IDs for highlights
-const getNextId = () => String(Math.random()).slice(2);
-
-// Simple spinner component
-const Spinner = () => (
-  <div className="pdf-spinner" role="status" aria-live="polite">
-    <span className="spinner-icon" aria-hidden="true" />
-    Loading PDF...
-  </div>
-);
 
 const AdvancedPdfViewer = ({ url }) => {
   const [numPages, setNumPages] = React.useState(null);

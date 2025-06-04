@@ -26,11 +26,11 @@
     "productName": "Essay Grader",
     "mac": {
       "target": "dmg",
-      "icon": "build/icon.icns"
+      "icon": "assets/icon.icns"
     },
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "assets/icon.ico"
     },
     "files": [
       "build/**/*",
@@ -40,7 +40,7 @@
       "node_modules/pdfjs-dist/build/pdf.worker.min.js"
     ],
     "directories": {
-      "buildResources": "build"
+      "buildResources": "assets"
     },
     "extraMetadata": {
       "main": "main.js"
@@ -69,6 +69,7 @@
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^13.5.0",
     "better-sqlite3": "^11.10.0",
+    "jspdf": "^3.0.1",
     "pdfjs-dist": "^2.16.105",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
