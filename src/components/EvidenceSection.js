@@ -48,7 +48,7 @@ const EvidenceSection = ({
                   }}
                 >
                   <div className="evidence-location">
-                    <span className="evidence-page">Page {item.page || item.paragraph || 'N/A'}</span>
+                    <span className="evidence-page">{item.page || item.paragraph || 'N/A'}</span>
                   </div>
                   <blockquote className="evidence-quote">"{quote}"</blockquote>
                   {item.context && <div className="evidence-context">Context: {item.context}</div>}

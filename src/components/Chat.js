@@ -10,41 +10,23 @@ import WelcomeSection from './WelcomeSection';
 import InteractiveGrading from './InteractiveGrading';
 import OverallAssessment from './OverallAssessment';
 import RubricModal from './RubricModal';
-// import ContextDialog from './ContextDialog';
+import ContextDialog from './ContextDialog';
 
 
 const Chat = ({ pdfFile }) => {
-  // ...existing state...
   const [criterionStartTime, setCriterionStartTime] = useState(null); // Track when user starts a criterion
-  // === Context dump state (temporarily disabled) ===
-  // const [showContextDialog, setShowContextDialog] = useState(false);
-  // const [contextList, setContextList] = useState([]);
-  // const [contextId, setContextId] = useState(null);
+  const [showContextDialog, setShowContextDialog] = useState(false);
+  const [contextList, setContextList] = useState([]);
   const [pdfContent, setPdfContent] = useState(null);
   // Assessment settings state
   const [assessmentType, setAssessmentType] = useState('flow'); // 'flow' or 'bullets'
   const [assessmentLength, setAssessmentLength] = useState('long'); // 'long', 'medium', 'short'
 
-  // Cache context dump whenever it changes and is non-empty (temporarily disabled)
-  // React.useEffect(() => {
-  //   const cacheContext = async () => {
-  //     if (contextList && contextList.length > 0) {
-  //       try {
-  //         const id = await geminiService.uploadContextDump(contextList);
-  //         setContextId(id);
-  //       } catch (err) {
-  //         setContextId(null);
-  //         console.error('Failed to cache context dump:', err);
-  //       }
-  //     } else {
-  //       setContextId(null);
-  //     }
-  //   };
-  //   cacheContext();
-  // }, [contextList]);
-
   // Add state for rubric functionality
   const [showRubricModal, setShowRubricModal] = useState(false);
+
+  // --- Context Dialog Button Helper ---
+  const handleCloseContextDialog = () => setShowContextDialog(false);
   const [rubricContent, setRubricContent] = useState('');
   const [isProcessingRubric, setIsProcessingRubric] = useState(false);
   
@@ -149,8 +131,8 @@ const Chat = ({ pdfFile }) => {
     
     try {
       const criterion = criteria[index];
-      // Always pass contextId for context-aware grading
-      const assessment = await geminiService.gradeSingleCriterion(pdfContent, criterion, options, null); // Temporarily disabled contextId
+      // Always pass contextList for context-aware grading
+      const assessment = await geminiService.gradeSingleCriterion(pdfContent, criterion, options, contextList);
       // Add the assessment to our state
       setCriteriaAssessments(prev => {
         const newAssessments = [...prev];
@@ -333,7 +315,7 @@ const Chat = ({ pdfFile }) => {
     });
     // Generate the overall assessment
     try {
-      let assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores, options);
+      let assessment = await geminiService.generateOverallAssessment(pdfContent, criteriaWithScores, options, contextList);
       console.log('[finishGrading] Raw LLM assessment:', assessment);
       if (typeof assessment === 'string') {
         try {
@@ -379,6 +361,9 @@ const Chat = ({ pdfFile }) => {
   };
 
   return (
+    <>
+
+
     <div className="app-container">
       {/* Restart App Button (top-right corner, always visible) */}
       <button
@@ -420,12 +405,32 @@ const Chat = ({ pdfFile }) => {
   ) : (
     <>
       {!(rubricCriteria.length > 0 || criteriaAssessments.length > 0) && (
-        <AssessmentSettingsSection
-          assessmentType={assessmentType}
-          setAssessmentType={setAssessmentType}
-          assessmentLength={assessmentLength}
-          setAssessmentLength={setAssessmentLength}
-        />
+        <>
+          <AssessmentSettingsSection
+            assessmentType={assessmentType}
+            setAssessmentType={setAssessmentType}
+            assessmentLength={assessmentLength}
+            setAssessmentLength={setAssessmentLength}
+          />
+          <div style={{ display: 'flex', justifyContent: 'center', margin: '18px 0 10px 0', gap: 12 }}>
+  <button
+    className="add-context-btn"
+    type="button"
+    onClick={() => setShowContextDialog(true)}
+    title="Add optional context information (e.g., course outline, assignment prompt)"
+  >
+    <span style={{ fontSize: 22, marginRight: 6 }}>➕</span> Add Context
+  </button>
+</div>
+          {showContextDialog && (
+            <ContextDialog
+              open={showContextDialog}
+              onClose={handleCloseContextDialog}
+              contextList={contextList}
+              setContextList={setContextList}
+            />
+          )}
+        </>
       )}
       {/* Context dump button (visible before grading starts) */}
       {/* Temporarily disabled */}
@@ -514,6 +519,7 @@ const Chat = ({ pdfFile }) => {
       
 
     </div>
+    </>
   );
 };
 

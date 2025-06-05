@@ -51,13 +51,8 @@ const InteractiveGrading = ({
   const [editedJustification, setEditedJustification] = React.useState('');
   const [editedBullets, setEditedBullets] = React.useState([]);
 
-  // Fix off-by-one: Save justification only after state is set
-  React.useEffect(() => {
-    if (editingJustification === 'pending-save') {
-      handleSaveJustification();
-      setEditingJustification(false);
-    }
-  }, [editedJustification, editedBullets, editingJustification]);
+  // Save justification only after state is set
+
 
   // State for interactive highlight on hover
   const [hoveredEvidenceIndex, setHoveredEvidenceIndex] = React.useState(null);
@@ -72,7 +67,7 @@ React.useEffect(() => {
 const [gradingError, setGradingError] = React.useState(null);
 
 
-  const handleSaveJustification = async () => {
+  const handleSaveJustification = React.useCallback(async () => {
   setGradingError(null);
   const now = () => new Date().toISOString();
   const currentAssessmentObj = criteriaAssessments[currentCriterionIndex];
@@ -128,7 +123,7 @@ const [gradingError, setGradingError] = React.useState(null);
         latestRevision.justification || '',
         editedJustification,
         latestRevision.aiScore
-      );
+      ); // No contextId needed
       console.log(`[${now()}] [handleSaveJustification] LLM response:`, { revisedScore, rationale });
       // Update the latest revision with the new AI score/rationale
       const updatedAssessmentsFinal = updatedAssessmentsImmediate.map((assessmentObj, idx) => {
@@ -163,8 +158,7 @@ const [gradingError, setGradingError] = React.useState(null);
       setIsRevisingScore(false);
     }
   }
-};
-
+}, [criteriaAssessments, currentCriterionIndex, assessmentType, editedBullets, editedJustification, essayContent, setCriteriaAssessments, setEditingJustification, setIsRevisingScore, setGradingError]);
 
   // If we're still loading criteria
   if (isProcessingRubric && rubricCriteria.length === 0) {

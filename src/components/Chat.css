@@ -1179,13 +1179,44 @@
   color: #3367d6;
 }
 
+.add-context-btn {
+  background: linear-gradient(90deg, #2563eb 70%, #1b4fc1 100%);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 10px 28px;
+  font-size: 1.07em;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.10);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.12s;
+  outline: none;
+}
+.add-context-btn:hover,
+.add-context-btn:focus {
+  background: linear-gradient(90deg, #1b4fc1 60%, #2563eb 100%);
+  box-shadow: 0 4px 16px rgba(37,99,235,0.13);
+  transform: translateY(-2px) scale(1.025);
+}
+.add-context-btn:active {
+  background: #1741a6;
+  box-shadow: 0 1px 4px rgba(27,79,193,0.13);
+  transform: translateY(1px) scale(0.98);
+}
+.add-context-btn:focus-visible {
+  outline: 2.5px solid #ffb300;
+  outline-offset: 2px;
+}
+
 /* Essay Text Section Styles */
 .essay-text-section {
   margin-top: 30px;
   border-top: 1px solid #e9ecef;
   padding-top: 20px;
 }
-
 .essay-text-header {
   display: flex;
   justify-content: space-between;

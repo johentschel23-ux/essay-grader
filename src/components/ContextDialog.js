@@ -1,13 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import './ContextDialog.css';
+import pdfUtils from '../utils/pdfUtils';
 
-const MAX_CONTEXT_LENGTH = 50000;
+const MAX_CONTEXT_LENGTH = 20000;
 
-const ContextDialog = ({ open, onClose, contextList, setContextList, contextId }) => {
+const ContextDialog = ({ open, onClose, contextList, setContextList }) => {
   const [adding, setAdding] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [error, setError] = useState('');
+  const [loadingPdf, setLoadingPdf] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    setLoadingPdf(true);
+    setError('');
+    try {
+      const extractedText = await pdfUtils.extractTextFromPdf(file);
+      setContent(extractedText);
+      setTitle(file.name.replace(/\.pdf$/i, ''));
+      setAdding(true);
+    } catch (err) {
+      setError('Failed to extract text from PDF.');
+    } finally {
+      setLoadingPdf(false);
+      e.target.value = '';
+    }
+  };
+
+  const openPdfDialog = () => {
+    if (fileInputRef.current) fileInputRef.current.click();
+  };
 
   const handleAddContext = () => {
     if (!title.trim()) {
@@ -42,13 +67,13 @@ const ContextDialog = ({ open, onClose, contextList, setContextList, contextId }
           <h3>Context Dump <span role="img" aria-label="library">📚</span></h3>
           <button className="close-modal-button" onClick={onClose} aria-label="Close">×</button>
         </div>
-        {contextId && (
-          <div style={{ fontSize: '0.93em', color: '#2563eb', margin: '0 0 7px 2px', fontWeight: 500 }}>
-            Context cache active: <span style={{ fontFamily: 'monospace', fontSize: '0.96em', color: '#0b5d8c' }}>{contextId}</span>
-          </div>
-        )}
+
         <div className="context-dialog-content">
-          {adding ? (
+          {loadingPdf ? (
+            <div className="add-context-form" style={{textAlign: 'center', padding: '2em 0'}}>
+              <span style={{fontSize: 22, color: '#2563eb'}}>Extracting text from PDF…</span>
+            </div>
+          ) : adding ? (
             <div className="add-context-form">
               <input
                 className="context-title-input"
@@ -106,6 +131,11 @@ const ContextDialog = ({ open, onClose, contextList, setContextList, contextId }
                 ))}
                 <li className="add-context-card" tabIndex={0} role="button" aria-label="Add context" onClick={() => setAdding(true)} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setAdding(true)}>
                   <span style={{ fontSize: 38, color: '#4285f4', userSelect: 'none' }}>+</span>
+                </li>
+                <li className="add-context-card" tabIndex={0} role="button" aria-label="Upload PDF context" onClick={openPdfDialog} onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && openPdfDialog()} style={{marginLeft: 8}}>
+                  <span style={{ fontSize: 24, color: '#34a853', userSelect: 'none', marginRight: 8 }}>📄</span>
+                  <span style={{ fontSize: 15, color: '#34a853', userSelect: 'none' }}>Upload PDF</span>
+                  <input type="file" accept="application/pdf" style={{ display: 'none' }} ref={fileInputRef} onChange={handlePdfUpload} />
                 </li>
               </ul>
             </div>

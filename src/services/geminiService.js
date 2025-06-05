@@ -132,11 +132,10 @@ export const uploadContextDump = async (contextList, modelOverride = null) => {
  * @param {string} essayContent - The content of the essay
  * @param {object} criterion - The criterion object
  * @param {object} options - Optional configuration overrides
- * @param {string} contextId - The context ID
  * @param {Array} contextList - The context list
  * @returns {Promise<object>} - The assessment for this criterion
  */
-export const gradeSingleCriterion = async (essayContent, criterion, options = {}, contextId, contextList, modelOverride = null) => {
+export const gradeSingleCriterion = async (essayContent, criterion, options = {}, contextList, modelOverride = null) => {
   // Settings for assessment format and length
   const assessmentType = options.assessmentType || 'flow';
   const assessmentLength = options.assessmentLength || 'long';
@@ -166,9 +165,7 @@ For each evidence quote, indicate which sentences or bullet points from your jus
 
   // Inject context at the top of the prompt
   let contextBlock = '';
-  if (contextId) {
-    contextBlock = `CONTEXT_REF: ${contextId}\n`;
-  } else if (contextList && contextList.length > 0) {
+  if (contextList && contextList.length > 0) {
     contextBlock = 'CONTEXT DUMP:\n' + contextList.map(ctx => `- ${ctx.title}: ${ctx.content}`).join('\n') + '\n';
   }
 
@@ -214,7 +211,10 @@ For each evidence quote, indicate which sentences or bullet points from your jus
       maxOutputTokens: 1024
     }
   };
-  
+
+  console.log('===== LLM PROMPT (gradeSingleCriterion) =====');
+  console.log(prompt);
+  console.log('==============================================');
   try {
     const response = await ai.models.generateContent({
       model: geminiConfig.model,
@@ -242,7 +242,7 @@ For each evidence quote, indicate which sentences or bullet points from your jus
     const is503 = error && error.message && /503|overloaded|UNAVAILABLE/i.test(error.message);
     if (is503 && (!modelOverride || modelOverride === geminiConfig.model)) {
       try {
-        return await gradeSingleCriterion(essayContent, criterion, options, contextId, contextList, 'gemini-1.5-flash');
+        return await gradeSingleCriterion(essayContent, criterion, options, contextList, 'gemini-1.5-flash');
       } catch (fallbackError) {
         return {
           justification: "The Gemini API is overloaded. Please try again in a few minutes.",
@@ -268,7 +268,7 @@ For each evidence quote, indicate which sentences or bullet points from your jus
  * @param {object} options - Optional configuration overrides
  * @returns {Promise<object>} - The overall assessment
  */
-export const generateOverallAssessment = async (essayContent, criteriaWithScores, options = {}, modelOverride = null) => {
+export const generateOverallAssessment = async (essayContent, criteriaWithScores, options = {}, contextList = null, modelOverride = null) => {
   // Always use paragraph format and default length for overall assessment
   const strengthsInstruction = 'Present strengths as a coherent paragraph.';
   const improvementsInstruction = 'Present areas for improvement as a coherent paragraph.';
@@ -279,7 +279,14 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
     `${c.name}: Score ${c.teacherScore || c.aiScore} out of ${c.scoreRange.max}`
   ).join('\n');
   
+  // Inject context at the top of the prompt
+  let contextBlock = '';
+  if (contextList && contextList.length > 0) {
+    contextBlock = 'CONTEXT DUMP:\n' + contextList.map(ctx => `- ${ctx.title}: ${ctx.content}`).join('\n') + '\n';
+  }
+
   const prompt = `
+    ${contextBlock}
     You are an expert essay grader. Given the following essay and the scores for each criterion, provide an overall assessment. 
     Summarize the essay's strengths and areas for improvement. 
     Then, generate a final grade on a 0-10 scale (with decimals allowed), where the individual criterion scores are on their own scales (typically 1-5). 
@@ -310,7 +317,10 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
       maxOutputTokens: 1024
     }
   };
-  
+
+  console.log('===== LLM PROMPT (generateOverallAssessment) =====');
+  console.log(prompt);
+  console.log('==================================================');
   try {
     const response = await ai.models.generateContent({
       model: geminiConfig.model,
@@ -335,7 +345,7 @@ export const generateOverallAssessment = async (essayContent, criteriaWithScores
     const is503 = error && error.message && /503|overloaded|UNAVAILABLE/i.test(error.message);
     if (is503 && (!modelOverride || modelOverride === geminiConfig.model)) {
       try {
-        return await generateOverallAssessment(essayContent, criteriaWithScores, options, 'gemini-1.5-flash');
+        return await generateOverallAssessment(essayContent, criteriaWithScores, options, contextList, 'gemini-1.5-flash');
       } catch (fallbackError) {
         return {
           strengths: "The Gemini API is overloaded. Please try again in a few minutes.",
@@ -413,6 +423,9 @@ export const reviseCriterionScoreWithJustification = async (
     }
   };
 
+  console.log('===== LLM PROMPT (reviseCriterionScoreWithJustification) =====');
+  console.log(prompt);
+  console.log('==================================================');
   try {
     // Use the new SDK directly for revising criterion score
     const response = await ai.models.generateContent({

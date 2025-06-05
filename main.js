@@ -119,10 +119,15 @@ function createWindow() {
     iconPath = path.join(__dirname, 'assets', 'icon.ico');
   }
 
+  const { screen } = require('electron');
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const workArea = primaryDisplay.workArea;
   const win = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    fullscreen: true,
+    width: Math.floor(workArea.width),
+    height: Math.floor(workArea.height),
+    x: Math.floor(workArea.x + workArea.width),
+    y: Math.floor(workArea.y + workArea.height),
+    fullscreen: false,
     icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
@@ -139,9 +144,11 @@ function createWindow() {
   console.log('NODE VERSION:', process.versions.node);
   console.log('CHROME VERSION:', process.versions.chrome);
   
-  // Ensure the window is maximized and in fullscreen
+  // Ensure the window is maximized and visually full screen (but not true fullscreen)
+  win.setMenuBarVisibility(false);
   win.maximize();
-  win.setFullScreen(true);
+  // Do not set full screen, so the window chrome is visible and resizable
+
   
   // Check if we're in development or production
   const isDev = process.env.NODE_ENV === 'development';
