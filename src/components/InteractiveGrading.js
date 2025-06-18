@@ -52,6 +52,12 @@ const InteractiveGrading = ({
   const [editedBullets, setEditedBullets] = React.useState([]);
 
   // Save justification only after state is set
+React.useEffect(() => {
+  if (editingJustification === 'pending-save') {
+    handleSaveJustification();
+  }
+  // eslint-disable-next-line
+}, [editingJustification]);
 
 
   // State for interactive highlight on hover
