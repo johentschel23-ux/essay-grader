@@ -1,70 +1,109 @@
-# Getting Started with Create React App
+# Essay Grader
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+An interactive essay grading application that provides AI-assisted feedback and grading for written assignments. This Electron-based desktop application allows educators to upload student essays in PDF format, automatically grade them using AI, and provide detailed feedback with highlighted evidence from the text.
 
-## Available Scripts
+## ✨ Features
 
-In the project directory, you can run:
+- **PDF Upload & Viewing**: Upload and view student essays in PDF format
+- **AI-Powered Grading**: Automatic grading using AI with configurable rubrics
+- **Interactive Feedback**: Highlight and annotate specific sections of the essay
+- **Rubric Management**: Create and manage custom grading rubrics
+- **Evidence-Based**: AI provides evidence for grades with direct references to the text
+- **Cross-Platform**: Works on Windows and macOS
 
-### `npm start`
+## 🚀 Getting Started
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Prerequisites
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Node.js (v14 or higher)
+- npm (v6 or higher) or Yarn
+- Git
 
-### `npm test`
+### Installation
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/johentschel23-ux/essay-grader.git
+   cd essay-grader
+   ```
 
-### `npm run build`
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn
+   ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+3. **Set up environment variables**
+   Create a `.env` file in the root directory with your API keys:
+   ```
+   REACT_APP_GEMINI_API_KEY=your_gemini_api_key_here
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### Running the Application
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+#### Development Mode
+```bash
+# Start the development server
+npm start
 
-### `npm run eject`
+# In a separate terminal, start Electron
+npm run electron:dev
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+#### Production Build
+```bash
+# Create a production build
+npm run build
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# Package the application for your platform
+npm run package
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## 🛠 Project Structure
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```
+essay-grader/
+├── public/              # Static files
+├── src/
+│   ├── components/      # React components
+│   ├── config/          # Configuration files
+│   ├── services/        # API and service integrations
+│   ├── utils/           # Utility functions
+│   ├── App.js           # Main application component
+│   └── index.js         # Application entry point
+├── main.js              # Electron main process
+└── preload.js           # Electron preload script
+```
 
-## Learn More
+## 📚 Documentation
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Key Components
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- **AdvancedPdfViewer**: Handles PDF rendering and text highlighting
+- **RubricModal**: Manages rubric creation and editing
+- **GeminiService**: Handles AI-powered grading and feedback
+- **Database**: SQLite database for storing grades and rubrics
 
-### Code Splitting
+### Database Schema
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+The application uses SQLite with the following main tables:
+- `grades`: Stores grading data
+- `rubrics`: Contains rubric definitions
+- `feedback`: Stores feedback and annotations
 
-### Analyzing the Bundle Size
+## 🤝 Contributing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+1. Fork the repository
+2. Create a new branch: `git checkout -b feature/your-feature`
+3. Commit your changes: `git commit -m 'Add some feature'`
+4. Push to the branch: `git push origin feature/your-feature`
+5. Submit a pull request
 
-### Making a Progressive Web App
+## 📄 License
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-### Advanced Configuration
+## 📧 Contact
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+For questions or support, please contact [your-email@example.com](mailto:your-email@example.com)
