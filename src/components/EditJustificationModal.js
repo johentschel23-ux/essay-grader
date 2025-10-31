@@ -50,7 +50,7 @@ const EditJustificationModal = ({
                   <textarea
                     className="edit-bullet-textarea modern-bullet-textarea"
                     value={bullet}
-                    maxLength={350}
+
                     onChange={e => {
                       const newBullets = [...bullets];
                       newBullets[idx] = e.target.value;
@@ -81,7 +81,7 @@ const EditJustificationModal = ({
               className="edit-justification-textarea large modern-textarea"
               style={{fontFamily: 'Segoe UI, Roboto, system-ui, Arial, sans-serif', fontSize: '1.12em', lineHeight: 1.7}}
               value={justification}
-              maxLength={1000}
+
               onChange={e => setJustification(e.target.value)}
               placeholder="Write your assessment justification here... (Markdown supported)"
               rows={8}

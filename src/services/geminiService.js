@@ -152,7 +152,8 @@ export const gradeSingleCriterion = async (essayContent, criterion, options = {}
 
   // New instructions to relate evidence to justification
   const relateInstruction = `
-For each evidence quote, indicate which sentences or bullet points from your justification it supports. Return the indexes (starting from 0) as a field "relatedAssessmentIndexes" in each evidence object. If the justification is a paragraph, treat each sentence as a unit (split on periods, exclamation marks, or question marks). If it's a list, use each bullet as a unit.`;
+    For each evidence quote, indicate which sentences or bullet points from your justification it supports. Return the indexes (starting from 0) as a field "relatedAssessmentIndexes" in each evidence object. 
+    If the justification is a paragraph, treat each sentence as a unit (split on periods, exclamation marks, or question marks). If it's a list, use each bullet as a unit.`;
 
   let lengthInstruction = '';
   if (assessmentLength === 'short') {
@@ -171,7 +172,7 @@ For each evidence quote, indicate which sentences or bullet points from your jus
 
   const prompt = `
     ${contextBlock}
-    You are an expert essay grader. Grade the following essay based on a single criterion from a rubric.
+    You are an expert essay grader of a masters level course. Grade the following essay based on a single criterion from a rubric. Your assessment must include specific references to the rubric criterion, quoting or paraphrasing the relevant rubric language as appropriate. Be critical and concise like a masters level professor would be.
     
     CRITERION: ${criterion.name}
     SCORE RANGE: ${criterion.scoreRange.min} to ${criterion.scoreRange.max}
